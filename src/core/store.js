@@ -56,7 +56,9 @@ const DEFAULT_SETTINGS = {
     memoryMB: 0,             // 0 = 由 doctor 按机器内存自动决定
     cores: 0,                // 0 = 自动
     autoMemory: true,        // 零配置：自动推导内存/核心/磁盘/渲染参数
-    idleShutdownMinutes: 15,
+    // Linux 上空闲回收更积极：桌面环境与浏览器共用内存，安卓闲置时留着它只是白占
+    // 约 1GB。快照仍在，重新打开只需一次恢复，不需要常驻预热。
+    idleShutdownMinutes: process.platform === 'linux' ? 5 : 15,
     startVisible: true,
     // 必须带窗口：无头模式 SurfaceFlinger 不出 VSYNC，应用进程活着但屏幕上什么都没有。
     // 带窗口的模拟器是原生 60fps + 原生鼠标键盘，ApkStart 只负责把它打扮成应用窗口。
@@ -105,7 +107,9 @@ const DEFAULT_SETTINGS = {
   priorityMode: 'balanced',
     // 预热：启动 ApkStart 后在后台把安卓环境引导好，第一次点应用几乎不用等。
     // 代价是常驻约 1GB 内存（和 WSA / 应用宝电脑版一样的取舍），可随时关掉。
-    prewarm: true,
+    // Linux 默认不预热：预热意味着安卓常驻约 1GB，与「内存高效」冲突；
+    // quickboot 快照已经把二次启动压到约 10 秒。用户在设置里可自行打开。
+    prewarm: process.platform !== 'linux',
     // 多窗口（B 方案）：允许同时打开多个应用、各自独立窗口。默认关闭，
     // 保持「开新停旧」的单窗口行为；开启后靠墓碑机制回收后台，资源可控。
     multiWindow: false,

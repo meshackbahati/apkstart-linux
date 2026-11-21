@@ -527,6 +527,14 @@ async function restartForOrientation(landscape, { reloadApp = true } = {}) {
  */
 async function attachAppWindow() {
   if (!appWin) return false;
+  // Linux 没有 Win32 窗口代理：模拟器的 Qt 窗口由它自己显示，这里不调用任何
+  // PowerShell 命令（那会连续失败四次并退回同样不可用的嵌入模式）。
+  // 只收起「正在启动」的壳窗口，让安卓画面直接留在桌面上。
+  if (platform.isLinux()) {
+    try { if (appWin.isOpen) appWin.win.hide(); } catch (_) { /* ignore */ }
+    appWin.lastEmbedError = '';
+    return true;
+  }
   const embedMode = displaySettings().windowEmbed === true;
   if (!embedMode) {
     /**
@@ -2611,17 +2619,15 @@ function registerIpc() {
   ipcMain.handle('assoc:status', () => {
     // 冒烟/无 shell 环境：不探测注册表（reg.exe 可能被策略拦截）
     if (NO_SHELL_PROBE) return { registered: false, skipped: true };
-    const { execFileSync } = require('child_process');
-    try {
-      const out = execFileSync('reg', ['query', 'HKCU\\Software\\Classes\\.apk', '/ve'], { windowsHide: true, encoding: 'utf8' });
-      return { registered: out.includes(assoc.PROGID) };
-    } catch (_) {
-      return { registered: false };
-    }
+    return assoc.associationStatus();
   });
 
   ipcMain.handle('assoc:register', () => {
     const l = launcherInfo();
+    // Linux 的 .desktop 图标只认 PNG；ICO 在 GTK/KDE 下不会显示。
+    if (process.platform === 'linux') {
+      return assoc.registerAssociation(l.target, LOGO_FILE, l.args);
+    }
     const icoPath = path.join(store.ICON_DIR, 'apkstart.ico');
     if (!fs.existsSync(icoPath)) {
       // 优先用随包分发的多尺寸品牌 ICO，缺失时从 Logo PNG 现算
