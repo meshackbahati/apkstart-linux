@@ -18,6 +18,7 @@ const { Provisioner } = require('./provision');
 const doctor = require('./doctor');
 const drivers = require('./drivers');
 const userdata = require('./userdata');
+const platform = require('./platform');
 
 const AVD_NAME = 'apkstart';
 const SNAPSHOT_NAME = 'apkstart';
@@ -110,10 +111,13 @@ class EmulatorEngine {
 
   get serial() { return `emulator-${this.port}`; }
 
-  /** emulator.exe 与系统镜像目录（优先用户运行时目录，回退到仓库内 engine/） */
+  /** emulator 可执行文件与系统镜像目录（优先用户运行时目录，回退到仓库内 engine/） */
   locate() {
     const p = this.provisioner.paths();
-    const emuCandidates = [p.emulatorExe, path.join(this.appRoot, 'engine', 'emulator', 'emulator.exe')];
+    const emuCandidates = [
+      p.emulatorExe,
+      path.join(this.appRoot, 'engine', 'emulator', platform.bin('emulator')),
+    ];
     const emulatorExe = emuCandidates.find((c) => fs.existsSync(c)) || '';
     const img = this.provisioner.systemImageInfo();
     return { emulatorExe, sysImgDir: img.dir, sysImgOk: img.ok, root: emulatorExe ? path.dirname(path.dirname(emulatorExe)) : p.root };
@@ -580,22 +584,26 @@ class EmulatorEngine {
    *  注意参数顺序：`qemu-img <命令> -f raw <文件> <大小>`。
    *  把 -f 放命令前面会被它当成全局参数直接报 unrecognized option。 */
   _qemuImg(op, ...rest) {
-    const exe = path.join(path.dirname(this.locate().emulatorExe), 'qemu-img.exe');
+    const exe = path.join(path.dirname(this.locate().emulatorExe), platform.bin('qemu-img'));
     const r = spawnSync(exe, [op, '-f', 'raw', ...rest], {
       cwd: path.dirname(exe), windowsHide: true, encoding: 'utf8',
     });
     if (r.status !== 0) throw new Error(`qemu-img ${op} 失败: ${(r.stderr || '').trim() || r.status}`);
   }
 
-  /** emulator 自带 resize2fs.exe（cygwin 版，必须在 bin64 目录下跑才能找到 DLL） */
+  /** emulator 自带的 resize2fs（Windows 是 bin64 下的 cygwin 版，必须在那个目录跑才能找到 DLL） */
   _resize2fs(img) {
     const bin = path.join(path.dirname(this.locate().emulatorExe), 'bin64');
-    const exe = path.join(bin, 'resize2fs.exe');
-    if (!fs.existsSync(exe)) throw new Error('缺少 resize2fs.exe');
+    const bundled = path.join(bin, platform.bin('resize2fs'));
+    // Linux 版 emulator 不一定带 resize2fs；宿主 e2fsprogs 提供同功能工具，作为兜底。
+    const exe = fs.existsSync(bundled) ? bundled : (platform.isLinux() ? 'resize2fs' : '');
+    if (!exe) throw new Error(`缺少 ${platform.bin('resize2fs')}`);
     const r = spawnSync(exe, [img], {
-      cwd: bin, windowsHide: true, encoding: 'utf8', timeout: 180000,
+      cwd: fs.existsSync(bin) ? bin : undefined, windowsHide: true, encoding: 'utf8', timeout: 180000,
     });
-    if (r.status !== 0) throw new Error(`resize2fs 失败: ${(r.stderr || '').trim() || r.status}`);
+    if (r.error || r.status !== 0) {
+      throw new Error(`resize2fs 失败: ${(r.error && r.error.message) || (r.stderr || '').trim() || r.status}`);
+    }
   }
 
   /** emulator 依赖这些环境变量定位 SDK / AVD；中文路径一律转 8.3 短路径 */
@@ -1017,7 +1025,7 @@ class EmulatorEngine {
     if (!adb) {
       // adbVersionPath() 只查「版本文件」，很多安装形态下是空的；
       // 直接按运行时根目录找 bundled 的 platform-tools 才稳。
-      try { adb = path.join(this.locate().root, 'platform-tools', 'adb.exe'); } catch (_) { adb = ''; }
+      try { adb = path.join(this.locate().root, 'platform-tools', platform.bin('adb')); } catch (_) { adb = ''; }
     }
     if (!adb || !fs.existsSync(adb)) adb = 'adb';
     const port = Number(process.env.ANDROID_ADB_SERVER_PORT) || this.adbPort || 5044;
@@ -1099,7 +1107,7 @@ class EmulatorEngine {
     // 防御：调用方可能误把函数本身传进来（rt.adbPath 是个方法）。
     let adb = typeof adbPath === 'function' ? adbPath() : (adbPath || '');
     if (!adb) {
-      try { adb = path.join(this.locate().root, 'platform-tools', 'adb.exe'); } catch (_) { adb = ''; }
+      try { adb = path.join(this.locate().root, 'platform-tools', platform.bin('adb')); } catch (_) { adb = ''; }
     }
     if (!adb || !fs.existsSync(adb)) adb = 'adb';
     const port = Number(process.env.ANDROID_ADB_SERVER_PORT) || this.adbPort || 5044;

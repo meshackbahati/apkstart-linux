@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');
 const { autoRotateSetting } = require('./orientation');
+const platform = require('./platform');
 
 /**
  * 镜像内「自动旋转」开关要写进 guest 的值（'1' 开 / '0' 关）。
@@ -41,10 +42,14 @@ function tabletDensity() {
  * 继承别人的 server 状态（端口、授权、offline 抖动），与「独立运行」冲突。
  * 自己那份 adb 在运行时目录里，优先级永远最高（见 engine.adbPath）。
  */
-const COMMON_ADB_PATHS = [
+const COMMON_ADB_PATHS = platform.isWin() ? [
   path.join(process.env.LOCALAPPDATA || '', 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
   'C:/Android/platform-tools/adb.exe',
   'C:/adb/adb.exe',
+] : [
+  '/usr/bin/adb',
+  '/usr/local/bin/adb',
+  path.join(os.homedir(), 'Android', 'Sdk', 'platform-tools', 'adb'),
 ];
 
 /**
@@ -236,7 +241,7 @@ class AdbClient {
   static resolveAdb(explicit, appRoot) {
     const candidates = [
       explicit,
-      appRoot && path.join(appRoot, 'tools', 'platform-tools', 'adb.exe'),
+      appRoot && path.join(appRoot, 'tools', 'platform-tools', platform.bin('adb')),
       ...COMMON_ADB_PATHS,
     ].filter(Boolean);
     for (const c of candidates) {

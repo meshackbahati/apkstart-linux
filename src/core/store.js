@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { safeFilePart } = require('./pkgname');
+const platform = require('./platform');
 
 /**
  * 是不是 Microsoft Store（MSIX / APPX）打包版？
@@ -28,7 +29,11 @@ const STORE_BUILD = (() => {
 
 const DATA_DIR = STORE_BUILD
   ? path.join(os.homedir(), 'ApkStart', 'data')
-  : path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'apkstart');
+  : (process.env.APPDATA
+    ? path.join(process.env.APPDATA, 'apkstart')
+    : (platform.isLinux()
+      ? path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'apkstart')
+      : path.join(os.homedir(), 'AppData', 'Roaming', 'apkstart')));
 const ICON_DIR = path.join(DATA_DIR, 'icons');
 const APK_DIR = path.join(DATA_DIR, 'apks');
 const APPS_FILE = path.join(DATA_DIR, 'apps.json');

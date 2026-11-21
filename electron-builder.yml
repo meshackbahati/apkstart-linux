@@ -17,6 +17,9 @@ files:
   # 运行时解压 .xz 镜像用（NAPI 预编译，无 ABI 问题）
   - "node_modules/@napi-rs/lzma/**"
   - "node_modules/@napi-rs/lzma-win32-x64-msvc/**"
+  # Linux 上解压 system.img.xz 需要对应的 NAPI 预编译包（glibc / musl 两种都要带）
+  - "node_modules/@napi-rs/lzma-linux-x64-gnu/**"
+  - "node_modules/@napi-rs/lzma-linux-x64-musl/**"
   - "!node_modules/@napi-rs/lzma/*.md"
   - "!node_modules/@napi-rs/lzma/*.ts"
   - "!node_modules/@napi-rs/lzma/browser-entry.*"

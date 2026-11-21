@@ -18,6 +18,7 @@ const { EmulatorEngine } = require('./emulator');
 const doctor = require('./doctor');
 const container = require('./container');
 const backends = require('./backends');
+const platform = require('./platform');
 
 const LOG_DIR = path.join(store.DATA_DIR, 'logs');
 const MONITOR_PORT = 5556;
@@ -124,7 +125,7 @@ class Runtime {
     // 自带 adb 永远排在第一位：同一台设备只认一份 adb 状态，不会出现 offline 反复抖动。
     if (fs.existsSync(p.adbExe)) return p.adbExe;
     if (s.adbPath && fs.existsSync(s.adbPath)) return s.adbPath;
-    const local = path.join(this.appRoot, 'tools', 'platform-tools', 'adb.exe');
+    const local = path.join(this.appRoot, 'tools', 'platform-tools', platform.bin('adb'));
     if (fs.existsSync(local)) return local;
     return AdbClient.resolveAdb('', this.appRoot);
   }
@@ -284,7 +285,7 @@ class Runtime {
     const hv = this._hv || { whpx: false };
     const disk = s.runtime.diskPath || p.disk;
     const iso = s.runtime.isoPath || p.iso;
-    const accel = hv.whpx ? 'whpx' : 'tcg';
+    const accel = hv.kvm ? 'kvm' : (hv.whpx ? 'whpx' : 'tcg');
     // 裸 QEMU 兜底路径也要吃 Linux 低内存配额：默认 4GB/4 核在共享内核的桌面
     // 上会直接把宿主拖进换页。用户手动填的值仍然优先。
     const budget = doctor.rawQemuBudget({ memoryMB: s.engine.memoryMB, cores: s.engine.cores });
@@ -531,8 +532,10 @@ class Runtime {
     const out = fs.openSync(logFile, 'a');
     fs.writeSync(out, `\n\n=== ${new Date().toISOString()} ${install ? 'INSTALL' : 'BOOT'} ===\n${env.qemu.path} ${args.join(' ')}\n`);
 
-    onLog(`启动运行时（${env.hypervisor.whpx ? 'WHPX 硬件加速' : '纯软件模拟'}）…`);
-    if (!env.hypervisor.whpx) onLog(env.hypervisor.note);
+    const accelName = env.hypervisor.kvm ? 'KVM 硬件加速'
+      : (env.hypervisor.whpx ? 'WHPX 硬件加速' : '纯软件模拟');
+    onLog(`启动运行时（${accelName}）…`);
+    if (!env.hypervisor.kvm && !env.hypervisor.whpx) onLog(env.hypervisor.note);
 
     const proc = spawn(env.qemu.path, args, {
       cwd: path.dirname(env.qemu.path),

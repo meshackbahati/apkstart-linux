@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const net = require('net');
+const platform = require('../src/core/platform');
 
 // 隔离测试数据目录，避免污染真实用户配置
 const TMP = path.join(os.tmpdir(), `apkstart-test-${Date.now()}`);
@@ -149,8 +150,8 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
   await test('默认运行时目录位于数据目录下', async () => {
     const p = new Provisioner('C:/fake/app');
     assert(p.paths().root.startsWith(store.DATA_DIR), `路径异常: ${p.paths().root}`);
-    assert(p.paths().qemuExe.endsWith('qemu-system-x86_64.exe'), 'qemu 路径异常');
-    assert(p.paths().adbExe.endsWith('adb.exe'), 'adb 路径异常');
+    assert(p.paths().qemuExe.endsWith(platform.bin('qemu-system-x86_64')), 'qemu 路径异常');
+    assert(p.paths().adbExe.endsWith(platform.bin('adb')), 'adb 路径异常');
   });
 
   await test('空环境检查：adb 未就绪，组件结构完整', async () => {
@@ -216,7 +217,7 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
       assert(/^https?:\/\//i.test(u), `不是绝对 URL: ${u}`);
       assert(/\.zip$/i.test(u), `不是 zip 包: ${u}`);
     }
-    assert(/windows_x64/i.test(emuUrl), `emulator 包平台不对: ${emuUrl}`);
+    assert(platform.emulatorUrlMatch().test(emuUrl), `emulator 包平台不对: ${emuUrl}`);
   });
 
   await test('AVD 配置使用 64 位架构（x86_64 不能被截成 x86）', async () => {

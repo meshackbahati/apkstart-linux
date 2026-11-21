@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const store = require('./core/store');
+const platform = require('./core/platform');
 const { Runtime } = require('./core/engine');
 const { Installer } = require('./core/installer');
 const { Sharer } = require('./core/sharer');
@@ -156,8 +157,9 @@ function bootstrapBundledRuntime() {
       }
       return false;
     };
+    const emuBin = platform.bin('emulator');
     const bundled = candidates.find((dir) =>
-      fs.existsSync(path.join(dir, 'emulator', 'emulator.exe')) && hasImage(dir));
+      fs.existsSync(path.join(dir, 'emulator', emuBin)) && hasImage(dir));
     if (!bundled) return;
 
     const s = store.getSettings();
@@ -172,13 +174,13 @@ function bootstrapBundledRuntime() {
     // 用户自己挑的目录（D:\ApkStartRuntime 之类）不会被这条规则误伤。
     const looksForeignBundle = /[\\/]resources[\\/]runtime$/i.test(current)
       && !path.resolve(current).toLowerCase().startsWith(path.resolve(exeDir).toLowerCase());
-    if (looksForeignBundle && fs.existsSync(path.join(bundled, 'emulator', 'emulator.exe'))) {
+    if (looksForeignBundle && fs.existsSync(path.join(bundled, 'emulator', emuBin))) {
       store.saveSettings({ runtime: { dir: bundled } });
       bundledRuntimeDir = bundled;
       appLog(`运行时目录指向别的安装包（${current}），改用随包内置运行时 ${bundled}`);
       return;
     }
-    const currentExe = path.join(current, 'emulator', 'emulator.exe');
+    const currentExe = path.join(current, 'emulator', emuBin);
     // 便携版被移动/升级（解压到新目录）后，settings 里记的还是旧路径：
     // 必须只认「本次 EXE 所在目录下的 runtime」，否则会一直用旧包里的组件
     // （实测踩过：旧包的 emulator 缺 emulator-check → 加速探测失败 → 退回 TCG 软件模拟）。

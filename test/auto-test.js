@@ -25,6 +25,7 @@ const doctor = require('../src/core/doctor');
 const layers = require('../src/core/layers');
 const pointer = require('../src/core/pointer');
 const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src/core/adb');
+const platform = require('../src/core/platform');
 
 (async () => {
   console.log('\n[doctor.js 自动参数]');
@@ -2057,8 +2058,8 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
       assert(paths.tmp.toLowerCase().startsWith(store.DATA_DIR.toLowerCase()), '_tmp 也要改道');
       assert(paths.avdHome.toLowerCase().startsWith(store.DATA_DIR.toLowerCase()), 'AVD 也必须在可写目录');
       // 可执行文件仍然指向包内（这样才有包身份，%APPDATA% 虚拟化视图才和父进程一致）
-      assert(paths.emulatorExe === path.join(roRoot, 'emulator', 'emulator.exe'), 'emulator 仍从包内运行');
-      assert(paths.adbExe === path.join(roRoot, 'platform-tools', 'adb.exe'), 'adb 仍从包内运行');
+      assert(paths.emulatorExe === path.join(roRoot, 'emulator', platform.bin('emulator')), 'emulator 仍从包内运行');
+      assert(paths.adbExe === path.join(roRoot, 'platform-tools', platform.bin('adb')), 'adb 仍从包内运行');
       // ensureDirs 不能因为 root 只读就抛错
       p.ensureDirs();
     } finally {
