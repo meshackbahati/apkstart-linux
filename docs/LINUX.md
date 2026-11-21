@@ -42,6 +42,16 @@ The Linux defaults are deliberately conservative because the desktop session sha
 
 Manual values entered in settings always take precedence over these automatic ceilings. Users who want higher FPS in games can switch the resource strategy to `smooth` and disable the memory ceiling by entering an explicit memory value.
 
+## Verification
+
+The following was observed on an x86_64 host with accessible `/dev/kvm`, using an isolated data directory:
+
+- `platform-tools 1.0.41` and `emulator 37.4.1.0` were downloaded from Google's Linux archives and unpacked with executable bits intact.
+- `emulator -accel-check` returned `accel: 0` and `KVM (version 12) is installed and usable.`; ApkStart's probe resolved the same output to `kind: kvm`.
+- Cold boot reached `sys.boot_completed=1`; `ro.product.cpu.abilist` reported `x86_64,arm64-v8a`, so ARM-only applications have a translation path.
+- `assets/PinyinIME.apk` was parsed offline, installed through the same adb client (`Success`), resolved by `pm path`, and its launch activity was started with `am start`.
+- Stopping the runtime produced a quickboot snapshot; the subsequent boot took about 63 seconds instead of a full cold boot.
+
 ## Known limitations
 
 - The auto-updater still uses a Windows PowerShell replacement script. On Linux, use the **open download page** action and replace the AppImage manually.
