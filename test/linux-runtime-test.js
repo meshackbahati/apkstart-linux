@@ -60,6 +60,8 @@ async function test(name, fn) {
     assert.equal(platform.unixExecutableEntry('emulator/emulator'), true);
     assert.equal(platform.unixExecutableEntry('emulator/qemu-img'), true);
     assert.equal(platform.unixExecutableEntry('platform-tools/adb'), true);
+    assert.equal(platform.unixExecutableEntry('emulator/netsimd'), true);
+    assert.equal(platform.unixExecutableEntry('emulator/nimble_bridge'), true);
     assert.equal(platform.unixExecutableEntry('emulator/bin64/resize2fs'), true);
     assert.equal(platform.unixExecutableEntry('emulator/lib64/libGL.so'), false);
     assert.equal(platform.unixExecutableEntry('system.img'), false);

@@ -51,6 +51,9 @@ function emulatorFallbackUrl(platform = process.platform) {
 const EXECUTABLE_NAMES = new Set([
   'adb', 'fastboot', 'emulator', 'emulator-check', 'qemu-img', 'qemu-system-x86_64',
   'resize2fs', 'e2fsck', 'mke2fs', 'adbkeygen', 'etc1tool', 'sqlite3',
+  // emulator 37.x 的 Linux 包还带这些后台工具；漏掉 netsimd 会在开机时
+  // 报 Permission denied（实测），虽然不致命但说明解压权限补全不完整。
+  'netsimd', 'nimble_bridge', 'mksdcard', 'crashreport', 'qsn',
 ]);
 
 function unixExecutableEntry(name) {
