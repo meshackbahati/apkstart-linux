@@ -1071,6 +1071,11 @@ function fillSettings(s) {
     ? s.engine.mouseWheelMode : 'smooth';
   $('setMouseSideButtons').checked = !!s.engine.mouseSideButtons;
   if ($('setKeymapEnabled')) $('setKeymapEnabled').checked = s.engine.keymapEnabled !== false;
+  // 实验室：原生多窗口多开（实验性）
+  if ($('setMultiWindow')) $('setMultiWindow').checked = !!s.engine.multiWindow;
+  if ($('setKeepBackground')) $('setKeepBackground').value = String(
+    Number(s.engine.keepBackground) >= 0 ? Number(s.engine.keepBackground) : 1,
+  );
   $('setCompat').checked = !!(s.runtime && s.runtime.compatImage);
   $('setAutoShortcut').checked = !!s.createShortcutOnInstall;
   $('setStartMenuShortcut').checked = s.createStartMenuShortcut !== false;
@@ -1137,6 +1142,7 @@ const SETTINGS_CATS = [
   { id: 'diag', name: '诊断与修复' },
   { id: 'files', name: '集成与文件' },
   { id: 'about', name: '更新与关于' },
+  { id: 'lab', name: '实验室' },
 ];
 
 const settingsCatState = { cat: 'basic', query: '' };
@@ -1787,6 +1793,22 @@ function bindSettings() {
     $('setKeymapEnabled').addEventListener('change', async (e) => {
       await api.keymap.setEnabled(e.target.checked);
       toast({ title: e.target.checked ? '键盘映射已开启' : '键盘映射已关闭', type: 'ok' });
+    });
+  }
+  // 实验室：多开开关与后台保留数。改完提示下次打开应用生效（切换应用路径才读它）。
+  if ($('setMultiWindow')) {
+    $('setMultiWindow').addEventListener('change', (e) => {
+      save({ engine: { multiWindow: e.target.checked } });
+      toast({
+        title: e.target.checked ? '多窗口多开已开启（实验性）' : '已回到单应用模式',
+        body: e.target.checked ? '下次打开应用生效：多个应用可并存、各自独立原生窗口。' : '',
+        type: 'ok',
+      });
+    });
+  }
+  if ($('setKeepBackground')) {
+    $('setKeepBackground').addEventListener('change', (e) => {
+      save({ engine: { keepBackground: Number(e.target.value) } });
     });
   }
   $('setDeepTrim').addEventListener('change', async (e) => {

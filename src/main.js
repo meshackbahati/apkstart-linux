@@ -631,7 +631,10 @@ async function openAppWindow(pkg, tip) {
     detached,
     showWhileWaiting: detached && !splashVisible,
   });
-  appWin.setIcon(rec && rec.icoPath);
+  // 启动动画里的应用图标要用原始 PNG（iconPath，通常 192px+）：ICO 在 Chromium
+  // 的 <img> 里只会挑其中一个尺寸渲染、还带透明边距，64px 容器里看着就「缺一块」。
+  // 原生窗口标题栏图标才用 ICO（open() 里的 iconPath 仍是 rec.icoPath，Win32 认它）。
+  appWin.setIcon(rec && (rec.iconPath || rec.icoPath));
   // 打开时按已保存的方向初始化（物理面板方向在 doctor.lcdFor 里决定）
   appWin.setState({
     // 需要重启换面板时，直接把「为什么慢」写在提示里，别让用户对着 40 秒空屏猜
@@ -1266,6 +1269,24 @@ async function launchOne(pkg) {
   // 放在函数作用域，供后面的最终判定使用。
   let attachDoneEarly = false;
   let earlyAttachOk = false;
+  // 启动动画统一收尾：早期 splash 窗口 + 应用窗口的 boot 遮罩一起淡出。
+  // 幂等（onAppUp 首帧判定 / launch 结束兜底 / 定时保险丝都可能调它），并保证
+  // boot 遮罩要等「应用画出首帧」才收，绝不在白底 Splash 阶段提前消失 —— 这正是
+  // 用户要的「动画保持到安卓系统启动完毕」。
+  let bootAnimDone = false;
+  let bootFuse = null;
+  const finishBootAnimation = () => {
+    if (bootAnimDone) return;
+    bootAnimDone = true;
+    if (bootFuse) { clearTimeout(bootFuse); bootFuse = null; }
+    if (appWin && appWin.isOpen) appWin.setState({ ready: true, tip: '' });
+    if (typeof splashDone === 'function') splashDone();
+  };
+  // 总保险丝：waitForAppFirstFrame 最多等 20 秒，留 4 秒余量。任何路径（首帧判定
+  // 抛错、onAppUp 没触发、launch 提前返回）导致没人收动画时，24 秒后强制收掉，
+  // 绝不能让用户永远卡在启动动画里。
+  bootFuse = setTimeout(finishBootAnimation, 24000);
+  bootFuse.unref?.();
   appLog(`launch start ${pkg}`);
   try {
     // 0) 先把管理窗口收起来，再去开应用窗口。
@@ -1349,9 +1370,11 @@ async function launchOne(pkg) {
               }
             } catch (_) { /* 判定失败按已就绪处理 */ }
             mark(`first frame=${painted}`);
-            if (typeof splashDone === 'function') splashDone();
+            // 首帧（或 20 秒兜底）到了才收动画：早期 splash 窗口和应用窗口的
+            // boot 遮罩一起收，别让带应用图标的启动动画在白底 Splash 之前就消失。
+            finishBootAnimation();
           })
-          .catch(() => { earlyAttachOk = false; });
+          .catch(() => { earlyAttachOk = false; finishBootAnimation(); });
         // 应用刚起来时 Activity 还在重建，会按自己声明的方向（portrait）再转一次，
         // 把刚锁好的方向覆盖掉 —— 这就是「平板/横屏模式下画面总是 90 度躺着」。
         // 等它稳定后补一次方向自愈（读 init/cur，只有真躺倒才写）。
@@ -1429,7 +1452,10 @@ async function launchOne(pkg) {
         }, 700);
       } catch (_) { /* 窗口可能刚关闭 */ }
     }
-    appWin.setState({ ready: true, tip: '' });
+    // 只有「没走提前接画面」的路径才在这里直接收动画。走了 onAppUp 的，
+    // 首帧判定还在异步进行，交给 finishBootAnimation（首帧完成/超时/保险丝），
+    // 否则会在白底 Splash 阶段就把 boot 遮罩收掉，露出系统 Splash 的白图标。
+    if (!attachDoneEarly) finishBootAnimation();
     // 容器会话：环境已经就绪，这里只做「按应用裁剪 + 打开后台轮询」，
     // 不再为这个 App 重新引导一遍 Android。鼠标键位钩子由窗口 focus 事件
     // 按设置决定，失焦即卸载。
@@ -1455,8 +1481,8 @@ async function launchOne(pkg) {
           : '设置 → 环境自检 → 修复 可一键开启（需管理员授权），之后重启一次。');
       }).catch(() => {});
     }
-    // 兜底：如果 early attach 没触发 splashDone（比如嵌入模式），这里补一次
-    if (typeof splashDone === 'function') splashDone();
+    // 兜底：如果 early attach 没触发（比如嵌入模式），这里补一次。幂等，已收则无事。
+    finishBootAnimation();
     return { ok: true, embedded };
   } catch (e) {
     appLog(`launch failed ${pkg}: ${e && (e.stack || e.message)}`);
@@ -2009,7 +2035,11 @@ function registerIpc() {
       if (!doctor.vcRedistOk()) {
         issues.push({
           code: 'vcRedist', severity: 'error', title: '缺少 VC++ 运行库（x64）',
-          hint: '安卓运行时依赖微软 VC++ 2015-2022，缺失会导致模拟器无法启动（0xc0000135）。', fix: 'vcRedist',
+          // 这一条是实测 dll 文件不存在才报，可信。但要说清：0xC0000135 不等于
+          // 一定是缺 VC++——商店版从 WindowsApps 起子进程也会报同码。装完若仍
+          // 起不来，按内置手册 6.8 继续定位，别反复重装运行库。
+          hint: '实测系统缺少微软 VC++ 2015-2022（x64），安卓运行时依赖它。'
+            + '可一键安装；若装完仍报 0xC0000135，见内置手册 6.8——商店版还可能是子进程 DLL 路径问题。', fix: 'vcRedist',
         });
       }
       accel = await runtime.provisioner.emulatorAccel().catch(() => ({ ok: false }));
@@ -2876,6 +2906,10 @@ if (!gotLock) {
     // 首次安装时额外显示配置步骤介绍；非首次只显示精简动画。
     // 安卓环境就绪后淡出关闭，应用秒进。
     const isFirstRun = !store.getSettings().runtime.installed;
+    // splash 最短驻留：极简动画的 fadeUp 最晚 .95s 开始、持续 .85s，约 1.8s 播完。
+    // 记住真正 show 出来的时刻，splashDone 时若不足就补足，避免「一闪而过看不清」。
+    // 只影响「没有直接启动应用」这种本来就快的路径；冷启动部署本来就 >1.8s，无感。
+    let splashShownAt = Date.now();
     try {
       // 屏幕居中
       const { screen: electronScreen } = require('electron');
@@ -2900,7 +2934,7 @@ if (!gotLock) {
       // 和 agent 的 SetForegroundWindow 抢 z-order，导致 splash 被顶到后面）
       splashWin.setAlwaysOnTop(true, 'screen-saver');
       splashWin.loadFile(path.join(__dirname, 'ui', 'splash.html'));
-      splashWin.once('ready-to-show', () => splashWin.show());
+      splashWin.once('ready-to-show', () => { splashShownAt = Date.now(); splashWin.show(); });
       // IPC：版本号、首次运行标记、关闭
       ipcMain.handle('splash:version', () => app.getVersion());
       ipcMain.handle('splash:isFirstRun', () => isFirstRun);
@@ -2921,7 +2955,9 @@ if (!gotLock) {
     // 淡出信号只发一次；同时挂一个「保险丝」：splash 自己 2.5 秒内没关掉
     // （渲染进程卡住 / IPC 丢失）就由主进程强关，绝不把启动画面留在桌面上。
     let splashDoneSent = false;
-    splashDone = () => {
+    let splashDoneScheduled = false;
+    const SPLASH_MIN_MS = 1800;   // 极简动画完整播完所需的最短时间
+    const doSplashDone = () => {
       if (splashDoneSent) return;
       splashDoneSent = true;
       if (!splashWin || splashWin.isDestroyed()) return;
@@ -2932,6 +2968,18 @@ if (!gotLock) {
         } catch (_) { /* ignore */ }
         splashWin = null;
       }, 2500).unref?.();
+    };
+    splashDone = () => {
+      if (splashDoneSent || splashDoneScheduled) return;
+      const waited = Date.now() - splashShownAt;
+      if (waited < SPLASH_MIN_MS) {
+        // 补足最短驻留：让 fadeUp 序列播完再淡出，别一闪而过。
+        // 只调度一次，取最早那次调用，避免重复调用把淡出越推越晚。
+        splashDoneScheduled = true;
+        setTimeout(doSplashDone, SPLASH_MIN_MS - waited).unref?.();
+      } else {
+        doSplashDone();
+      }
     };
     // 兜底超时：任何路径都没触发 splashDone（例如启动失败卡住）也要收掉，
     // 否则 splash 会一直悬在屏幕中央 —— 这就是「多个窗口」最刺眼的一幕。
@@ -2976,6 +3024,8 @@ if (!gotLock) {
       exePath: process.execPath,
       isPackaged: app.isPackaged,
       dataDir: store.DATA_DIR,
+      // 增量更新的前提：本机 Electron 版本与发版时一致，才只换代码层
+      electronVersion: process.versions.electron,
       // 让更新器能读到「只走 GitHub / 只走 Gitee / 自动选快」和镜像前缀设置
       settings: () => store.getSettings(),
       onProgress: (p) => send('update:progress', p),

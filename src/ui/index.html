@@ -191,6 +191,11 @@
           <span class="set-nav-label">更新与关于</span>
           <span class="set-nav-badge" data-badge="about" hidden></span>
         </button>
+        <button class="set-nav-item" type="button" data-cat="lab">
+          <span class="set-nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6M10 3v7L5 20a1 1 0 0 0 .9 1.5h12.2A1 1 0 0 0 19 20l-5-10V3"/><path d="M7.5 15h9"/></svg></span>
+          <span class="set-nav-label">实验室</span>
+          <span class="set-nav-badge" data-badge="lab" hidden></span>
+        </button>
       </nav>
     <div class="modal-body" id="settingsBody">
       <div class="group" id="runtimeGroup" data-cat="basic">
@@ -912,6 +917,32 @@
               <span class="powered">Powered by <b>RoutineMiku</b></span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="group" id="labGroup" data-cat="lab">
+        <div class="group-title">实验室</div>
+        <div class="lab-notice">
+          这里的功能还在实验阶段，行为可能随版本变化。遇到问题可在「诊断与修复 → 导出诊断报告」反馈。
+        </div>
+        <div class="field switch-field">
+          <div>
+            <label>Windows 原生多窗口 · 多开（实验性）</label>
+            <span class="sub">开启后打开新应用不再强制关闭上一个：多个应用可同时驻留、随时快速切回（保留登录态，不必重新加载），切回体验接近多窗口。
+              受限于安卓运行时只有一个模拟器窗口，同一时刻仍只有一个应用画面在前台显示，并非真正的同时并排多窗口。
+              会明显增加内存占用；关闭则回到「一次只显示一个应用」的稳定模式。</span>
+          </div>
+          <input type="checkbox" id="setMultiWindow" class="switch" />
+        </div>
+        <div class="field">
+          <label for="setKeepBackground">后台保留应用数</label>
+          <select id="setKeepBackground">
+            <option value="0">0 · 最省内存（只留当前应用）</option>
+            <option value="1">1 · 平衡（推荐）</option>
+            <option value="2">2 · 多开更稳</option>
+            <option value="3">3 · 最多并存</option>
+          </select>
+          <span class="sub">多开模式下，超过这个数量的后台应用会被挂起（保留数据、秒切回），释放内存。</span>
         </div>
       </div>
     </div>

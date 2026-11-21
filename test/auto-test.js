@@ -2322,7 +2322,7 @@ const platform = require('../src/core/platform');
     const root = path.join(__dirname, '..');
     const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
     const launchIdx = mainJs.indexOf('async function runLaunch(');
-    const body = mainJs.slice(launchIdx, launchIdx + 1600);
+    const body = mainJs.slice(launchIdx, launchIdx + 2600);
     const hideIdx = body.indexOf('mainWindow.hide()');
     const openIdx = body.indexOf('openAppWindow(pkg');
     assert(hideIdx > 0 && openIdx > 0, '两个调用都要在 runLaunch 里');
@@ -2731,14 +2731,48 @@ const platform = require('../src/core/platform');
     // 收动画前必须等首帧，否则用户看到白底 + 应用图标，以为卡死
     const idx = mainJs.indexOf('waitForAppFirstFrame');
     assert(idx > 0, 'main 要调用 waitForAppFirstFrame');
-    const after = mainJs.slice(idx, idx + 800);
-    assert(/splashDone/.test(after), '首帧之后才 splashDone');
+    const after = mainJs.slice(idx, idx + 900);
+    assert(/finishBootAnimation/.test(after), '首帧之后才统一收启动动画');
     // 判定必须用 `dumpsys window`：`dumpsys window windows` 里没有 mCurrentFocus，
     // 会把焦点判断永远判成否，导致每次启动都白等满超时。
     assert(/dumpsys window \| grep -E "Splash Screen\|mCurrentFocus"/.test(adbJs),
       '首帧判定要用 dumpsys window（含 mCurrentFocus）');
     // 红果这类重应用首帧要 15 秒以上，12 秒超时会把动画提前收掉
     assert(/timeoutMs:\s*20000/.test(mainJs), '首帧等待给足 20 秒');
+  });
+
+  await test('启动动画：boot 遮罩与 splash 统一收尾，且保持到首帧', () => {
+    const root = path.join(__dirname, '..');
+    const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
+    // 幂等的统一收尾函数：splash 窗口 + appWin 的 boot 遮罩一起收
+    assert(/const finishBootAnimation = \(\) =>/.test(mainJs), '要有统一收尾函数');
+    const fn = mainJs.slice(mainJs.indexOf('const finishBootAnimation'),
+      mainJs.indexOf('const finishBootAnimation') + 700);
+    assert(/bootAnimDone/.test(fn), '收尾必须幂等，避免多处触发重复收');
+    assert(/setState\(\{ ready: true/.test(fn), '收尾要通知 boot 遮罩淡出');
+    assert(/splashDone/.test(fn), '收尾要同时关掉早期 splash 窗口');
+    // launch 结束处不能再无条件 setState ready（会在白底 Splash 阶段提前收动画）
+    assert(/if \(!attachDoneEarly\) finishBootAnimation\(\)/.test(mainJs),
+      '只有没走提前接画面时才在 launch 结束直接收');
+    // 总保险丝：任何路径卡住都会强制收，绝不永久停在动画里
+    assert(/setTimeout\(finishBootAnimation, 24000\)/.test(mainJs), '要有 24 秒总保险丝');
+  });
+
+  await test('启动动画：图标用完整 PNG + 兜底，极简风视觉元素齐全', () => {
+    const root = path.join(__dirname, '..');
+    const mainJs = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
+    // 图标优先用原始 PNG（iconPath），不再用 ICO（Chromium <img> 渲染会缺角）
+    assert(/setIcon\(rec && \(rec\.iconPath \|\| rec\.icoPath\)\)/.test(mainJs),
+      '启动动画图标要用完整 PNG');
+    const shellHtml = fs.readFileSync(path.join(root, 'src', 'ui', 'shell.html'), 'utf8');
+    const shellCss = fs.readFileSync(path.join(root, 'src', 'ui', 'shell.css'), 'utf8');
+    const shellJs = fs.readFileSync(path.join(root, 'src', 'ui', 'shell.js'), 'utf8');
+    assert(/object-fit:\s*contain/.test(shellCss), '图标用 contain 完整显示，不裁切缺角');
+    assert(/class="boot-aura"/.test(shellHtml) && /class="boot-glow"/.test(shellHtml),
+      'boot 要有柔和光晕层（极简苹果风）');
+    assert(/@keyframes bootBreathe/.test(shellCss), '图标要有缓慢呼吸动效');
+    assert(/prefers-reduced-motion/.test(shellCss), '要尊重系统减少动态效果偏好');
+    assert(/FALLBACK/.test(shellJs) && /logo-128/.test(shellJs), '图标加载失败要有品牌图兜底');
   });
 
   await test('启动提速：权限授过就不再重复授（省 20s+）', () => {

@@ -1,4 +1,4 @@
-# Microsoft Store 提交材料（ApkStart 0.6.2）
+# Microsoft Store 提交材料（ApkStart 0.6.3）
 
 > 这份文件是给 Partner Center 表单直接复制用的。包体、图标、清单由脚本产出，
 > 只有「注册账号 → 预留名称 → 上传 → 送审」必须在网页上人工完成。
@@ -12,7 +12,7 @@
 | Product name | `ApkStart` |
 | Category | Developer tools → Utilities & tools（备选：Productivity） |
 | Price | Free |
-| Package | `dist/store/ApkStart_0.6.2.0_x64.msix`（x64，约 1.5 GB） |
+| Package | `dist/store/ApkStart_0.6.3.0_x64.msix`（x64，约 1.5 GB） |
 | 支持语言 | 简体中文 / English (United States) |
 | 官网 | https://github.com/RoutineMiku/apkstart |
 | 支持邮箱 | <!-- 填你的邮箱 --> |
@@ -22,12 +22,19 @@
 
 **中文**
 ```
-0.6.2：
-· 内置使用手册：标题栏「?」、设置 → 关于、托盘菜单都能直接打开；可筛选目录、打印或存成 PDF，不用再去网上找文档。
-· 修复失败自动给教程：未启用硬件加速、安装失败、ARM 转译层缺失、adb 未授权、没有声音等问题自动处理不成功时，直接打开对应章节；每条检测结果旁也有「教程」按钮，同一个教程一次运行内只自动弹一次。
-· 自动检测新增声音检查：能发现「安卓应用声音」被关掉和 Windows Audio 服务停止，前者可一键重新打开并重启运行时，后者给出明确的手动步骤。
-· ARM 应用安装更稳：报错本身就是切换兼容镜像的理由；切换前作废旧快照，避免恢复到没有翻译层的旧状态；二次仍失败会如实告知，不再显示「正在重试」。
-· 保留 0.6.1 的原生窗口接管（4 次重试）、换向等待提示、首帧判定、双实例保护与全屏居中修复。
+0.6.3：
+· 启动动画焕新：极简苹果风——柔和光晕、图标缓慢呼吸、细腻淡入淡出；图标改用完整源不再缺角，且至少完整播放约 2 秒，不再一闪而过。打开应用时动画保持到画出第一屏才淡出，不提前露白底。
+· 打开应用更快：合并窗口接管时的重复等待、加快进程存活探测，点开到出画面更利落。
+· 设置新增「实验室」分组，含「Windows 原生多窗口多开（实验性）」开关：开启后多个应用可驻留后台、随时切回并保留登录态（默认关闭）。受限于单一模拟器窗口，同一时刻仍只显示一个应用画面。
+· 启动失败诊断更准确：0xC0000135 不再一律说「重装 VC++/杀毒删文件」，而是区分真缺运行库、商店版只读目录限制或杀软隔离，并带你到内置手册 6.8 节。
+· 便携版新增增量更新：从 GitHub / Gitee 升级只下几 MB 代码，不重下系统镜像、运行时、已装应用和快照；有哈希校验、失败回退完整包。商店版仍经 Microsoft Store 差分更新。
+· 保留 0.6.2 的内置手册、故障自动教程、声音检测与 ARM 安装修复。
+
+0.6.2（已包含）：
+· 内置使用手册：标题栏「?」、设置 → 关于、托盘菜单都能直接打开；可筛选目录、打印或存成 PDF。
+· 修复失败自动给教程：硬件加速、安装失败、ARM 转译层、adb 未授权、没有声音等自动修复失败时，直接打开对应章节；每条检测结果旁也有「教程」按钮。
+· 自动检测新增声音检查：能发现「安卓应用声音」被关掉和 Windows Audio 服务停止，前者可一键重新打开并重启运行时。
+· ARM 应用安装更稳：报错本身即触发切换兼容镜像，切换前作废旧快照，二次仍失败如实告知。
 
 0.6.1（已包含）：
 · 修复启动后仍是 ApkStart 等待窗口：原生窗口尽早接管画面；接管失败自动重试四次。
@@ -102,12 +109,19 @@
 
 **English**
 ```
-0.6.2:
-· The user manual is now built in. Open it from the "?" button in the title bar, Settings → About, or the tray menu. Searchable contents, print and Save as PDF are supported.
-· Help arrives when it is needed: if automatic repair fails for hardware acceleration, app installation, ARM translation, adb authorization, or audio, ApkStart opens the matching manual section. Every diagnostic item also has a "Guide" button; the same section is auto-opened at most once per session.
-· Auto diagnostics now covers sound: it detects Android audio being turned off and the Windows Audio service being stopped. The first can be fixed with one click and a runtime restart; the second comes with clear manual steps.
-· More reliable ARM installs: an ABI error alone triggers a switch to the compatible image, the old snapshot is invalidated first, and a second failure is reported honestly instead of claiming a retry is still running.
-· Keeps the 0.6.1 fixes: native window hand-over with four retries, orientation-switch progress, first-frame detection, protection against two instances fighting over the emulator, and centred fullscreen layout.
+0.6.3:
+· Refreshed launch animation in a minimal Apple-inspired style: soft glow, a gently breathing icon and smooth fades. The icon uses the full-resolution source (no clipped corners) and plays for at least ~2s instead of flashing by. When opening an app it stays until the first frame is drawn instead of showing the white splash early.
+· Faster app launches: merged duplicate waits during window hand-over and sped up process-alive detection.
+· New "Labs" settings section with an experimental "Windows native multi-window" switch: when on, multiple apps stay resident and can be switched back to instantly with login state kept (off by default). One emulator window still shows one app at a time.
+· More accurate startup-failure diagnosis: 0xC0000135 no longer always means "reinstall VC++ / antivirus deleted a file"; it distinguishes a missing runtime, Store read-only path limits and antivirus quarantine, and links to manual section 6.8.
+· Incremental updates for the portable build: upgrading from GitHub / Gitee downloads only a few MB of code, not the system image, runtime, installed apps or snapshots. Hash-verified with automatic fallback. Store builds keep updating via Microsoft Store.
+· Keeps 0.6.2 features: built-in manual, automatic help, sound diagnostics and ARM install fixes.
+
+0.6.2 (included):
+· Built-in user manual, open from the "?" button, Settings → About or the tray menu; searchable, printable and saveable as PDF.
+· Automatic help: when repair fails for hardware acceleration, installation, ARM translation, adb authorization or audio, ApkStart opens the matching section; every diagnostic item has a "Guide" button.
+· Auto diagnostics for sound: detects Android audio being turned off and the Windows Audio service being stopped; the first is fixable with one click and a runtime restart.
+· More reliable ARM installs: an ABI error alone triggers a switch to the compatible image, with the old snapshot invalidated first; a second failure is reported honestly.
 
 0.6.1 (included):
 · Fixed launches that still showed ApkStart's own waiting screen; the emulator's native window takes over early and retries four times.
@@ -385,7 +399,7 @@ Notes:
    ```powershell
    node build/msix.js --identity "<Identity/Name>" --publisher "<Identity/Publisher>"
    ```
-4. **Packages** → 上传 `dist/store/ApkStart_0.6.2.0_x64.msix`，等待校验通过。
+4. **Packages** → 上传 `dist/store/ApkStart_0.6.3.0_x64.msix`，等待校验通过。
 5. **Store listing** → 填第 2–5 节的内容、上传截图、选分类。
 6. **Pricing and availability** → Free，市场选中国 + 全球。
 7. **Submission options** → 粘贴第 6 节的 certification notes。

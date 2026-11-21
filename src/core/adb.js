@@ -615,8 +615,10 @@ class AdbClient {
       // eslint-disable-next-line no-await-in-loop
       const pid = await this.shell(`pidof ${pkg}`, { timeout: 6000 }).catch(() => '');
       if (String(pid).trim()) return { ok: true };
+      // 350ms 轮询（原 1000ms）：进程一出现就更快确认存活、让启动流程往下走。
+      // pidof 是轻量 shell，密一点不会增加可感知负担，但对「点开到出画面」有直接收益。
       // eslint-disable-next-line no-await-in-loop
-      await sleep(1000);
+      await sleep(350);
     }
     let crash = '';
     try {
