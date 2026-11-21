@@ -1694,11 +1694,11 @@ function registerIpc() {
     const host = res.hostProfile();
     const eng = { ...patch.engine };
     if ('memoryMB' in eng) {
-      const c = res.clampMemoryMB(eng.memoryMB, host.totalMB);
+      const c = res.clampMemoryMB(eng.memoryMB, host.totalMB, process.platform);
       eng.memoryMB = c.mb;
       if (c.mb > 0) eng.autoMemory = false;
     }
-    if ('cores' in eng) eng.cores = res.clampCores(eng.cores, host.cores).cores;
+    if ('cores' in eng) eng.cores = res.clampCores(eng.cores, host.cores, process.platform).cores;
     if ('dataPartitionGB' in eng) {
       eng.dataPartitionGB = Math.max(0, Math.min(256, Number(eng.dataPartitionGB) || 0));
     }

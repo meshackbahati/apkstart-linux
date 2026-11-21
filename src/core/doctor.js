@@ -23,6 +23,26 @@ const isAsciiPath = (p) => ASCII.test(String(p || ''));
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+/**
+ * Linux 低内存配额。Linux 宿主通常是桌面会话（GNOME/KDE/浏览器）与安卓共用内存，
+ * 且没有 Windows 上的 WHPX / AEHD 这类专用加速层；自动参数因此比 Windows 更收敛。
+ * 只约束「自动推导」的值，用户手动填写的内存与核心数永远优先（见 chooseProfile）。
+ */
+const LINUX_MEM_CAP_MB = 2048;
+const LINUX_CORE_CAP = 2;
+
+/**
+ * 裸 QEMU 兜底路径（engine.js 的 -m / -smp）与官方模拟器共用同一组 Linux 上限。
+ * 用户显式填的值优先；自动值在 Linux 上收敛到 2GB / 2 核，其余平台维持原默认。
+ */
+function rawQemuBudget({ platform = process.platform, memoryMB = 0, cores = 0 } = {}) {
+  const linux = platform === 'linux';
+  return {
+    memoryMB: Number(memoryMB) > 0 ? Math.round(Number(memoryMB)) : (linux ? LINUX_MEM_CAP_MB : 4096),
+    cores: Math.max(2, Number(cores) > 0 ? Math.round(Number(cores)) : (linux ? LINUX_CORE_CAP : 4)),
+  };
+}
+
 /** 本机画像（毫秒级，只读） */
 function hostInfo() {
   const totalMB = Math.round(os.totalmem() / 1048576);
@@ -183,6 +203,8 @@ function chooseProfile({
   port = 5554, adbPort = 5044, overrides = {}, settings = null,
 } = {}) {
   const accelOk = !!(accel && accel.ok);
+  const isLinux = !!(host && host.platform === 'linux');
+  let linuxTuned = false;
   // 3GB 足够 Android 14 与主流应用；再高只会放大内存占用和 quickboot 快照体积
   let memoryMB = clamp(Math.floor((host.totalMB * 0.22) / 256) * 256, 2048, 3072);
   // 「省资源」模式：刷视频/看小说这类轻负载用不到 3G，把上限压到 2G。
@@ -202,6 +224,12 @@ function chooseProfile({
     const lim = memoryLimits(host.totalMB);
     memoryMB = clamp(Number(overrides.memoryMB) || memoryMB, 1536, lim.maxMB);
   }
+  // Linux 上把自动内存压到 2GB：既省下约 1GB 常驻，也同步缩小 quickboot 快照。
+  // 手动填的值在上面已经生效，这里不覆盖，和「手动值永远优先」的约定一致。
+  if (isLinux && !overrides.memoryMB && memoryMB > LINUX_MEM_CAP_MB) {
+    memoryMB = LINUX_MEM_CAP_MB;
+    linuxTuned = true;
+  }
 
   let cores = clamp(Math.floor(host.cores / 2), 2, 4);
   if (overrides.cores) {
@@ -212,6 +240,11 @@ function chooseProfile({
   // 用户没手动指定核数时才由轻量模式收敛，手动值永远优先
   const lite = settings ? liteProfile({ host, engine: settings.engine || {} }) : null;
   if (lite && !overrides.cores) cores = Math.min(cores, lite.cores);
+  // 无专用加速层时多余的 vCPU 只会让 TCG 线程和宿主桌面抢时间片；2 核足够跑主流应用。
+  if (isLinux && !overrides.cores && cores > LINUX_CORE_CAP) {
+    cores = LINUX_CORE_CAP;
+    linuxTuned = true;
+  }
 
   const disk = diskMB || freeDiskMB(host.tmp);
   // /data 容量：应用本体、游戏资源包和它们的「更新包」都占这里，4GB 太容易满
@@ -265,6 +298,7 @@ function chooseProfile({
     bootTimeoutMs: accelOk ? 240000 : 600000,
     emulatorVersion,
     host,
+    linuxTuned,
   };
 }
 
@@ -523,7 +557,7 @@ function diagnose(lines) {
 function describeProfile(p) {
   return `自动：${(p.memoryMB / 1024).toFixed(1)}GB 内存 · ${p.cores} 核 · ${p.gpu} 渲染 · `
     + `${p.accelOk ? '硬件加速' : '软件模拟'} · ${p.snapshot ? '按需快照' : '冷启动'}`
-    + `${p.lite ? ' · 轻量容器' : ''} · 端口 ${p.port}`;
+    + `${p.lite ? ' · 轻量容器' : ''}${p.linuxTuned ? ' · Linux 低内存' : ''} · 端口 ${p.port}`;
 }
 
 /** 导出诊断报告（纯文本，便于发邮件/贴 issue） */
@@ -588,6 +622,7 @@ function vcRedistOk() {
 module.exports = {
   hostInfo, freeDiskMB, isAsciiPath, shortPath, lcdFor, liteProfile,
   versionNumbers, gpuCandidates, detectGpuVendor, chooseProfile, planVariants,
+  rawQemuBudget,
   overridesFromSettings, autoProfile,
   freePortPair, freeAdbPort, snapshotKey, imageIdentity,
   diagnose, describeProfile, writeReport, vcRedistOk,

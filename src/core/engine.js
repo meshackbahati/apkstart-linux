@@ -285,13 +285,16 @@ class Runtime {
     const disk = s.runtime.diskPath || p.disk;
     const iso = s.runtime.isoPath || p.iso;
     const accel = hv.whpx ? 'whpx' : 'tcg';
+    // 裸 QEMU 兜底路径也要吃 Linux 低内存配额：默认 4GB/4 核在共享内核的桌面
+    // 上会直接把宿主拖进换页。用户手动填的值仍然优先。
+    const budget = doctor.rawQemuBudget({ memoryMB: s.engine.memoryMB, cores: s.engine.cores });
 
     const args = [
       '-name', 'ApkStart Runtime',
       '-machine', `q35,accel=${accel}`,
       '-cpu', hv.whpx ? 'host' : 'max',
-      '-smp', String(Math.max(2, s.engine.cores || 4)),
-      '-m', String(s.engine.memoryMB || 4096),
+      '-smp', String(budget.cores),
+      '-m', String(budget.memoryMB),
       '-rtc', 'base=localtime',
       '-netdev', 'user,id=net0,hostfwd=tcp:127.0.0.1:5555-:5555',
       '-device', 'virtio-net-pci,netdev=net0',

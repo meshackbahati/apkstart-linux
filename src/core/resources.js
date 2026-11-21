@@ -28,6 +28,11 @@ function toInt(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** 提示文案里的宿主名：Linux 上再说「留给 Windows」会让人误以为策略没生效 */
+function hostLabel(platform) {
+  return platform === 'linux' ? 'Linux 宿主' : 'Windows';
+}
+
 /**
  * 宿主能力。参数可注入，方便测试；不传就读本机。
  * @returns {{ totalMB:number, cores:number }}
@@ -68,7 +73,7 @@ function memoryLimits(totalMB) {
  * 把用户填的内存收敛到合法值。0 = 自动，原样返回 0（由各底座自己推导）。
  * @returns {{ mb:number, capped:boolean, reason:string }}
  */
-function clampMemoryMB(mb, totalMB) {
+function clampMemoryMB(mb, totalMB, platform = 'win32') {
   const want = toInt(mb);
   if (want <= 0) return { mb: 0, capped: false, reason: 'auto' };
   const lim = memoryLimits(totalMB);
@@ -77,7 +82,7 @@ function clampMemoryMB(mb, totalMB) {
     return {
       mb: lim.maxMB,
       capped: true,
-      reason: `宿主内存 ${Math.round(lim.totalMB / 1024)} GB，最多只能分 ${Math.round(lim.maxMB / 1024)} GB（要留 25% 给 Windows）`,
+      reason: `宿主内存 ${Math.round(lim.totalMB / 1024)} GB，最多只能分 ${Math.round(lim.maxMB / 1024)} GB（要留 25% 给 ${hostLabel(platform)}）`,
     };
   }
   if (rounded < lim.minMB) return { mb: lim.minMB, capped: true, reason: `安卓至少要 ${lim.minMB} MB 才能启动` };
@@ -88,13 +93,13 @@ function clampMemoryMB(mb, totalMB) {
  * CPU 核心数收敛。0 = 自动。
  * 上限定在「物理核 - 1」，至少留 1 核给宿主；单核机器只给 1 核。
  */
-function clampCores(n, hostCores) {
+function clampCores(n, hostCores, platform = 'win32') {
   const want = toInt(n);
   const total = Math.max(1, toInt(hostCores) || 1);
   const max = total > 1 ? total - 1 : 1;
   if (want <= 0) return { cores: 0, capped: false, reason: 'auto' };
   if (want > max) {
-    return { cores: max, capped: true, reason: `本机 ${total} 核，最多分 ${max} 核（留 1 核给 Windows）` };
+    return { cores: max, capped: true, reason: `本机 ${total} 核，最多分 ${max} 核（留 1 核给 ${hostLabel(platform)}）` };
   }
   return { cores: Math.max(1, want), capped: false, reason: '' };
 }

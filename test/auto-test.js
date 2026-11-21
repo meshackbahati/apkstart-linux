@@ -87,7 +87,9 @@ const { AdbClient, friendlyInstallError, friendlyLaunchError } = require('../src
     assert(v[v.length - 1].snapshot === false, '最后一档必须跳过快照加载');
     assert(v[v.length - 1].wipe === false, '任何自动重试都不允许清用户数据');
     assert(v[v.length - 1].memoryMB <= 2048, '最后一档应降到最小内存');
-    const keys = v.map((x) => `${x.gpu}|${x.accel}|${x.wipe}|${x.memoryMB}|${x.snapshot !== false}`);
+    // 最后一档刻意保留：小内存机器上它与前一档参数可以完全相同，靠 lastResort
+    // 标记区分为「唯一不加载快照」的兜底（见 planVariants 的去重规则）。
+    const keys = v.map((x) => `${x.gpu}|${x.accel}|${x.wipe}|${x.memoryMB}|${x.snapshot !== false}|${!!x.lastResort}`);
     assert(new Set(keys).size === keys.length, '重试方案不应重复');
   });
 

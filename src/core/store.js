@@ -67,7 +67,9 @@ const DEFAULT_SETTINGS = {
     // 一句话策略：save（省资源）/ balanced（均衡）/ smooth（流畅，视频·游戏优先）。
     // 界面上只暴露这一个选项，保存时自动翻译成 liteMode / priorityMode / renderSize，
     // 底部仍然保留细项开关给高级用户。
-    resourceMode: 'balanced',
+    // Linux 默认省资源：宿主桌面与安卓共用内存，且缺少专用加速层，自动配额更收敛。
+    // 老配置里已存下来的值不会被改写，doctor 的 Linux 上限仍然兜底。
+    resourceMode: process.platform === 'linux' ? 'save' : 'balanced',
     // 数据分区容量（GB）：应用、游戏缓存和它们的更新包都装在这里。
     // 0 = 自动（按磁盘剩余给 6/8GB）。改大后在下次开安卓时**就地扩容**，不丢已装应用。
     dataPartitionGB: 0,
