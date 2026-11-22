@@ -36,7 +36,7 @@ say "Installing wolfSSL into the portable prefix"
      --disable-opensslextra --enable-aescbc-length-checks --enable-curve25519 \
      --enable-ed25519 --enable-ed25519-stream --enable-oldtls --enable-base64encode \
      --enable-tlsx --enable-scrypt --disable-examples --enable-crl --enable-jni \
-     --enable-sessioncerts \
+     --enable-sessioncerts CFLAGS="-Wno-error -Wno-error=stringop-truncation" \
   && run make -j"$(nproc)" && run make install) || exit 1
 
 if [ ! -d bionic_translation ]; then
