@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
 
 [![CI](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml/badge.svg)](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/meshackbahati/apkstart?include_prereleases&sort=semver)](https://github.com/meshackbahati/apkstart/releases)
+[![Release](https://img.shields.io/github/v/release/meshackbahati/apkstart-linux?include_prereleases&sort=semver)](https://github.com/meshackbahati/apkstart-linux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20x64-3C9.svg)](#)
 
