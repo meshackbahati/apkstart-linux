@@ -131,3 +131,6 @@
 - 图标解析仍不支持 `shape`/矢量 drawable（会走占位图，并如实提示）。
 - `.apk` 关联写在 HKCU（免管理员）；如果系统里有其它程序反复抢回关联，
   以系统「默认应用」设置为准。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

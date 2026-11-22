@@ -76,3 +76,6 @@
   GitHub 与 Gitee 都是**一个完整 zip**，不需要再拼接分片。
 - 完整版 `ApkStart-0.3.4-Setup.exe`（约 1.35 GB，内置 adb / 模拟器 / 系统镜像，装完即离线可用）：
   体积超过 Gitee 单文件上限，只放在 GitHub。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

@@ -176,3 +176,6 @@ Windows 的每一次鼠标事件都要同步等这个线程回来，最长 4 秒
 空闲超过 idleShutdownMinutes：看门狗关掉运行时
 （接管来的实例以前因没有本地 proc 句柄而无法回收，已修）
 ```
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

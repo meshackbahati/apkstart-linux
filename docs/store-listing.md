@@ -408,3 +408,6 @@ Notes:
 
 > 不要用 Store submission API 创建首个 submission：一旦用 API 建过，
 > 该 submission 就不能再回网页编辑，会进入不可恢复的 error 状态。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

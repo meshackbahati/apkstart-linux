@@ -68,3 +68,6 @@ Network behaviour:
 Third-party apps you run are provided by their own developers and governed by their own privacy policies.
 
 Contact: open an issue at https://github.com/RoutineMiku/apkstart/issues
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

@@ -7,9 +7,12 @@ ApkStart is available as a global `apkstart` command after `npm install -g .` or
 | Command | Purpose |
 | --- | --- |
 | `apkstart --install <apk...>` | Parse, install and create desktop launchers for one or more APK files |
+| `apkstart --version` | Print the version |
 | `apkstart --list` | List installed applications by package, label and version |
+| `apkstart --game <app>` | Launch a game with the universal controller enabled |
 | `apkstart <app>` / `apkstart --launch <app>` | Launch by package name or by label |
 | `apkstart --stop <app>` | Force-stop an application and release game controls |
+| `apkstart --controls edit` | Open the controller layout editor as a desktop application |
 | `apkstart --backend <id>` | Select `builtin`, `waydroid` or `atl` |
 | `apkstart init [--backend <id>]` | Install and configure the dependencies of that backend |
 | `apkstart init --check` | Report what is installed without changing anything |
@@ -29,6 +32,9 @@ The sudo rules are exact command whitelists, not blanket passwordless root. They
 
 ## Game controls
 
-Touch-only games are played with `key2touch`, which reads host keyboard and mouse events and injects a virtual touchscreen into Waydroid. The default `universal` profile binds a WASD joystick, Space, Enter and left mouse button. Key capture is per application and off by default: `apkstart --controls on com.example.game` marks the game as touch-controlled and enables mapping at once, after which every launch of that game enables it automatically. Ordinary applications are never captured. A detached watcher turns mapping off when the game exits, `apkstart --stop` does so immediately, and `apkstart --controls off` releases it at any moment. Press F2 inside a game to edit the layout, and use `key2touch check -p universal --json` to validate it.
+Touch-only games are played with `key2touch`, which reads host keyboard and mouse events and injects a virtual touchscreen into Waydroid. The default `universal` profile binds a WASD joystick, Space, Enter and left mouse button. The universal controller is enabled by default when an application is launched, and its on-screen HUD is shown so the controls are visible during play. `apkstart --game <app>` is the explicit game launcher and guarantees the mapping is enabled; `apkstart --controls edit` opens the layout editor as a separate desktop application. A detached watcher turns mapping off when the game exits, `apkstart --stop` does so immediately, and `apkstart --controls off` releases it at any moment. Press F2 inside a game or run `apkstart --controls edit` to edit the layout, and use `key2touch check -p universal --json` to validate it.
 
 An on-screen keyboard can be enabled from the settings page when a touch keyboard is preferred. The default is off so that the host keyboard is used.
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

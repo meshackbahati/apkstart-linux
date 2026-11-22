@@ -59,6 +59,8 @@ class GameControls {
     if (profile) this.profile = profile;
     if (!await this._ensureDaemon()) return { ok: false, error: 'key2touch daemon did not start' };
     this._call(['profile', 'use', this.profile]);
+    // Show the on-screen HUD so the controller is visibly present during a game.
+    this._call(['show']);
     const r = this._call(['on']);
     this._enabled = /已开启|enabled|true/.test(`${r.stdout}${r.stderr}`) || r.ok;
     return { ok: this._enabled };

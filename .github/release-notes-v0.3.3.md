@@ -58,3 +58,6 @@
   （现在会挑最快的源，且断点续传）。
 
 两个仓库内容一致，国内建议走 Gitee。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

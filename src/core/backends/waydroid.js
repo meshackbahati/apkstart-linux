@@ -198,7 +198,10 @@ class WaydroidBackend extends Backend {
     child.unref();
     // Only applications explicitly marked as touch-controlled get key capture.
     const app = this.deps.store && this.deps.store.getApp ? this.deps.store.getApp(pkg) : null;
-    if (app && app.touchControls) {
+    const settings = this.deps.store && this.deps.store.getSettings ? this.deps.store.getSettings() : null;
+    const wanted = app ? app.touchControls !== false : true;
+    const globalWanted = !settings || !settings.input || settings.input.touchControls !== false;
+    if (wanted && globalWanted) {
       await this.controls.enable().catch(() => {});
     }
     // The CLI exits immediately after launch, so a detached watcher releases

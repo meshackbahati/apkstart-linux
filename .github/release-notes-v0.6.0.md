@@ -113,3 +113,6 @@
 - 包体：`dist/store/ApkStart_0.6.0.0_x64.msix`（x64，约 850 MB，内置完整运行时）
 - 身份：`RoutineMiku.ApkStart` / `CN=58CA1DED-8AB3-4D0D-AF50-62C9B781AA4D`
 - 提交材料：`docs/store-listing.md`（含本版 What's new 中英文段）
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

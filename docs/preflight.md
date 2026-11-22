@@ -58,3 +58,6 @@
 
 探测全部在本机完成：只读 WMI / 注册表 / 系统文件是否存在，不发请求、不上传任何信息。
 导出的诊断报告里也只有型号、驱动版本、内存这些排查必需的字段。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

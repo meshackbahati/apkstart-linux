@@ -397,3 +397,6 @@ materializeImages / Zip64 / 更新资产 / 0xC0000005 / 日志边界 / 失败落
 - 冷启/热启计时：`tools/e2e-boot.js`（历史数据：冷启 ~23s、命中快照 ~5s、含前置探测端到端 30.7s / 13.7s）；
 - 更新链路：`tools/check-update.js`（真 GitHub API + 真覆盖脚本）；
 - 鼠标键位、嵌入、转屏：`test/pointer-hook-logic.ps1`、`test/embed-probe*.ps1`、`test/win-*.ps1`。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

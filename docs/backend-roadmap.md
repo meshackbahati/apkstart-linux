@@ -111,3 +111,6 @@ PhoenixOS 基本已停止维护。**不作为产品方向。**
 3. **Waydroid 若要真做**，唯一务实的形态是：**独立的安装包 / 独立分支**，
    明确告知用户「此版本需要启用 Hyper-V，与模拟器版本不能共存」，而不是
    想着和现有底座无缝切换。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

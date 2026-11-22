@@ -47,3 +47,6 @@ Release 工作流会自动把便携版同步到 Gitee，不用再手动跑脚本
 
 - 便携版：解压覆盖，数据目录（默认 `%APPDATA%\apkstart`）保持不变。
 - 安装版：直接安装覆盖。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

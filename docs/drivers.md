@@ -166,3 +166,6 @@
 | `example-intel-igpu-software.json` | 老 Intel 核显 GLES 初始化失败 |
 
 它们同时也是文档：照着改 `match` 就能变成「只对我这台机器生效」的补丁。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

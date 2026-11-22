@@ -112,3 +112,6 @@ The on-screen keyboard switch described above is independent of game controls.
 - During verification, a full stop and restart of this QEMU AVD sometimes lost applications installed in the previous session. Keeping prewarming enabled avoids the restart during normal use. A shared-kernel Android container would be required for reliable per-application windows and state; that is a separate, larger effort.
 - Window embedding (`SetParent`) is a Windows-only feature and is skipped on Linux; the emulator always uses its own window.
 - `/dev/kvm` must be readable and writable. Most distributions require membership of the `kvm` group; log out and back in after adding the user.
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

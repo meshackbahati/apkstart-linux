@@ -74,3 +74,6 @@ only_fans_can_comment: 0
 ---
 
 *项目采用 MIT 许可。轻量版的运行时组件由用户本机从 Google 官方源按需下载；完整版为便利性一并打包，相关组件遵循其各自许可协议。*
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

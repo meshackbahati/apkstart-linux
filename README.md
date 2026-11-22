@@ -1,4 +1,6 @@
-# ApkStart
+# ApkStart Linux
+
+This repository is the Linux-focused build of ApkStart. The original project was created by RoutineMiku; the Linux runtime, command line, Waydroid and ATL backends, and game controls are developed here.
 
 <p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
 
@@ -406,3 +408,6 @@ ApkStart 由 **RoutineMiku** 开发维护。
 ## 许可证
 
 [MIT](LICENSE)。发行包只含 ApkStart 自身代码与 Electron 运行时，不分发安卓系统镜像、QEMU 二进制或 Google 组件；这些由用户本机首次启动时从官方源按需下载，遵循各自的许可协议。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

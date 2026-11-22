@@ -35,6 +35,19 @@ Categories=Utility;
 EOF
 chmod 644 "$DESKTOP"
 
+CONTROL_DESKTOP="$HOME/.local/share/applications/apkstart-game-controls.desktop"
+cat > "$CONTROL_DESKTOP" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ApkStart Game Controls
+Comment=Edit the universal keyboard and mouse controller for Android games
+Exec=$ROOT/bin/apkstart.js --controls edit
+Terminal=false
+Categories=Utility;Settings;
+EOF
+chmod 644 "$CONTROL_DESKTOP"
+
 say "Initialising backend: $BACKEND"
 apkstart init --backend "$BACKEND"
 

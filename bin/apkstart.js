@@ -52,7 +52,9 @@ const HELP = `ApkStart - run Android applications on the Linux desktop
 
 Usage:
   apkstart --install <file.apk> [...]   install one or more APK files
+  apkstart --version                    print the version
   apkstart --list                       list installed applications
+  apkstart --game <app>                 launch a game with the universal controller
   apkstart <app>                        launch by name or package
   apkstart --launch <app>               same as above
   apkstart --stop <app>                 stop a running application
@@ -61,7 +63,7 @@ Usage:
   apkstart init --check                 report what is installed
   apkstart install                      install apkstart globally and initialise
   apkstart --start-runtime              start the selected runtime now
-  apkstart --controls on|off|status     control keyboard-to-touch game mapping
+  apkstart --controls on|off|status|edit  manage keyboard-to-touch game mapping
   apkstart --stop-runtime               stop the runtime and free its memory
   apkstart --gui                        open the graphical interface
   apkstart --help                       show this message
@@ -96,6 +98,17 @@ async function launch(name) {
   await installer.launch(app.package, {
     onLog: (m) => process.stdout.write(`  ${m}\n`),
   });
+}
+
+async function game(name) {
+  const app = findApp(name);
+  if (!app) throw new Error(`Application not installed: ${name}. Run "apkstart --list".`);
+  store.upsertApp({ package: app.package, touchControls: true });
+  const { GameControls } = require(path.join(ROOT, 'src/core/gamecontrols'));
+  const c = new GameControls();
+  await c.enable().catch(() => {});
+  process.stdout.write(`Launching ${app.label || app.package} with universal controller\n`);
+  await launch(app.package);
 }
 
 async function stop(name) {
@@ -164,6 +177,13 @@ async function controls(action) {
     process.stdout.write('Game controls off\n');
     return;
   }
+  if (action === 'edit') {
+    const r = await c._ensureDaemon();
+    if (!r) throw new Error('key2touch daemon did not start');
+    c._call(['edit']);
+    process.stdout.write('Controller settings opened\n');
+    return;
+  }
   if (action === 'status' || !action) {
     process.stdout.write(`${JSON.stringify(await c.status())}\n`);
     return;
@@ -183,6 +203,10 @@ function gui() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   if (!cmd || cmd === '--help' || cmd === '-h') { process.stdout.write(HELP); return; }
+  if (cmd === '--version' || cmd === '-V') {
+    process.stdout.write(`${require(path.join(ROOT, 'package.json')).version}\n`);
+    return undefined;
+  }
   if (cmd === '--install') return install(argv.slice(1));
   if (cmd === '--list') return list();
   if (cmd === '--launch') {
@@ -212,6 +236,10 @@ function gui() {
   }
   if (cmd === 'init') return init(argv.slice(1));
   if (cmd === 'install') return globalInstall();
+  if (cmd === '--game') {
+    if (!argv[1]) throw new Error('--game needs an application name');
+    return game(argv[1]);
+  }
   if (cmd === '--controls') return controls(argv[1]);
   if (cmd === '--gui') return gui();
   if (cmd.startsWith('--')) throw new Error(`Unknown option: ${cmd}`);

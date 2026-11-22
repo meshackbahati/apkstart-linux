@@ -152,3 +152,6 @@ git push gitee main;  git push gitee v0.3.5
 CI：`release.yml` 会构建便携版（95MB zip）、完整版 Setup（~1.35GB）与运行时整包
 （~1.36GB），同步便携版到 Gitee（需要 `GITEE_TOKEN` secret，缺了会直接失败而不是静默跳过）。
 `full` job 的 xz 压缩约 40 分钟，属正常。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

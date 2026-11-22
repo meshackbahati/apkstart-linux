@@ -763,3 +763,6 @@ src/ui/app.js:371  deployAll()
 1. **只看一个函数就能解释八成的部署问题**：`Provisioner.checkEnv()`（`provision.js:367`）。它同时决定了 UI 的「差什么」、`autoDeploy` 的分支、`engine.ensure()` 走 emulator 还是 qemu、以及诊断报告的内容。
 2. **路径规则只有一处**：`Provisioner.paths()`（`provision.js:197`）。任何新代码要落运行时文件，必须从这里拿路径，不要自己拼 `DATA_DIR`。
 3. **下载策略都收敛在 `Sources` + `downloadMulti`**：新增源只要进 `candidates()`；新增「限速/选优」逻辑只需要改 `rank()` 与 `downloadMulti` 的混源条件，不要在 `provision.js` 里另写一套。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

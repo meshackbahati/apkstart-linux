@@ -183,3 +183,6 @@ FydeOS（基于 ChromiumOS）本身就能跑安卓应用。在它上面再开一
 - 配置文件位置不变，从 v0.4.x 直接覆盖即可。
 - 首次启动会走一次网络修复（约 13 秒），之后有了新快照就不再需要。
 - 窗口模式默认仍是嵌入；想试更省心的体验，到设置里切成**独立窗口**。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

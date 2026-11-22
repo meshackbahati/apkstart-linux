@@ -205,3 +205,6 @@ Add-AppxPackage -Path 'dist\store\ApkStart_0.6.3.0_x64.msix'
 | `src/core/store.js` | `STORE_BUILD` 检测（`process.windowsStore`）与数据目录改道 |
 | `src/core/provision.js` | 只读运行时目录处理：可执行文件留在包内，可写数据改道 |
 | `src/main.js` | 商店版关掉自更新、AEHD 改提示开 WHPX |
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

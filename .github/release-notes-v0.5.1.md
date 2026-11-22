@@ -64,3 +64,6 @@ ApkStart 的 adb 服务跑在**专用端口 5044**（你自己的 adb 是 5037�
 - 上架材料见 `docs/store-listing.md`，步骤见 `docs/store-upload-walkthrough.md`
 
 测试：9 + 25 + 117 = 151 通过。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

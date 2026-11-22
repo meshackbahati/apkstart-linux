@@ -477,3 +477,6 @@ ApkStart.exe --launch <包名>          直接启动应用（桌面快捷方式�
 ---
 
 *本手册对应 v0.6.3，随版本更新。若界面文案与此处略有出入，以软件内实际显示为准。*
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

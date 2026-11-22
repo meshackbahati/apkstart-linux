@@ -95,3 +95,6 @@
 - 身份：`RoutineMiku.ApkStart` / `CN=58CA1DED-8AB3-4D0D-AF50-62C9B781AA4D`
 - 提交材料：`docs/store-listing.md`（含本版 What's new 中英文段）
 - 驱动文档：`docs/drivers.md`
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

@@ -70,3 +70,6 @@ GitHub 搜 `RoutineMiku/apkstart`，点 Releases 下载，项目完全开源可�
 | `douyin-3.png` | 四个特性 |
 | `douyin-4.png` | ARM 兼容突破（红果短剧实机截图） |
 | `douyin-5.png` | 两版本对照 + 下载二维码 + 抖音号 |
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

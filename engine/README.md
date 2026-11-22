@@ -37,3 +37,6 @@ tools/platform-tools/
 
 QEMU 使用 WHPX 加速：控制面板 →「启用或关闭 Windows 功能」→ 勾选「虚拟机平台」→ 重启。
 未启用时 ApkStart 自动回退纯软件模拟（TCG），首次启动较慢。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

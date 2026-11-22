@@ -58,3 +58,6 @@ ProductVersion   0.5.3
 - 步骤：`docs/store-upload-walkthrough.md`
 
 测试：9 + 25 + 121 = 155 通过。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

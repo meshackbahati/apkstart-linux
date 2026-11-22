@@ -154,3 +154,6 @@ Windows 10 version 2004 (build 19041) or later, x64. "Virtual Machine Platform"
 
 - 首个包通常 1–3 个工作日
 - 被拒最常见的原因：截图与界面不符、隐私政策 404、certification notes 太简略——这三项本单都已覆盖
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

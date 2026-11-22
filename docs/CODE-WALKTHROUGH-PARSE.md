@@ -798,3 +798,6 @@ installer.finishInstall(rt, meta, ...)               installer.js:179
 ---
 
 *本文档为 WIP：行号基于 0.3.4 快照，改动相关文件后请同步更新。*
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

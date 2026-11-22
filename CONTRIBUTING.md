@@ -57,3 +57,6 @@ docs: 补充 WHPX 开启说明
 
 - 本项目不分发任何安卓系统镜像、QEMU 二进制或 Google 组件，全部由用户本机按需下载。
 - 请勿在仓库中提交商业 APK、破解工具或任何侵犯第三方版权的内容。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

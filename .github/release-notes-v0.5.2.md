@@ -61,3 +61,6 @@ dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
 - 升级：`0.5.2.0 > 0.5.1.0 > 0.5.0.0`，可直接覆盖之前提交的版本
 
 测试：9 + 25 + 118 = 152 通过。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.

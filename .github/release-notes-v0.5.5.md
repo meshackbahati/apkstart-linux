@@ -84,3 +84,6 @@ guest 里没有 root、也没有 `resize2fs`，差量盘无法在宿主侧合并
 - 步骤：`docs/store-upload-walkthrough.md`
 
 测试：全套 275 项通过（新增 MuMu 兼容 20 项、资源分配 32 项、独立运行 15 项）。
+
+<!-- apkstart-linux-origin -->
+> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.
