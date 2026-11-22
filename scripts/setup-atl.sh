@@ -53,7 +53,8 @@ if [ ! -d art_standalone ]; then
 fi
 say "Installing art_standalone into the portable prefix"
 (cd art_standalone && run make -j"$(nproc)" ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
-   CFLAGS="-I$ATL_ROOT/include" LDFLAGS="-L$ATL_ROOT/lib -Wl,-rpath,$ATL_ROOT/lib" \
+   HOST_C_INCLUDES="-I$ATL_ROOT/include" \
+   HOST_LDFLAGS="-L$ATL_ROOT/lib -Wl,-rpath,$ATL_ROOT/lib" \
   && run make ____LIBDIR=lib ____PREFIX="$ATL_ROOT" install) || exit 1
 
 if [ ! -d android_translation_layer ]; then
