@@ -48,8 +48,17 @@ if [ ! -d bionic_translation ]; then
   run git clone https://gitlab.com/android_translation_layer/bionic_translation.git
 fi
 say "Installing bionic_translation into the portable prefix"
-(cd bionic_translation && run meson setup builddir --prefix="$ATL_ROOT" \
-  && run meson compile -C builddir && run meson install -C builddir) || exit 1
+(
+  cd bionic_translation
+  run sudo chown -R "$USER" builddir 2>/dev/null || true
+  if [ -d builddir ]; then
+    run meson configure builddir --prefix="$ATL_ROOT"
+  else
+    run meson setup builddir --prefix="$ATL_ROOT"
+  fi
+  run meson compile -C builddir
+  run meson install -C builddir
+) || exit 1
 
 if [ ! -d art_standalone ]; then
   say "Fetching art_standalone"
@@ -70,8 +79,19 @@ if [ ! -d android_translation_layer ]; then
   run git clone https://gitlab.com/android_translation_layer/android_translation_layer.git
 fi
 say "Installing ATL into the portable prefix"
-(cd android_translation_layer && run meson setup builddir --prefix="$ATL_ROOT" -Ddownload_tool_deps=true \
-  && run meson compile -C builddir && run meson install -C builddir) || exit 1
+(
+  cd android_translation_layer
+  export PKG_CONFIG_PATH="$ATL_ROOT/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+  export LD_LIBRARY_PATH="$ATL_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  export LIBRARY_PATH="$ATL_ROOT/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+  if [ -d builddir ]; then
+    run meson configure builddir --prefix="$ATL_ROOT"
+  else
+    run meson setup builddir --prefix="$ATL_ROOT" -Ddownload_tool_deps=true
+  fi
+  run meson compile -C builddir
+  run meson install -C builddir
+) || exit 1
 
 say "Verification"
 BIN="$ATL_ROOT/bin/android-translation-layer"
