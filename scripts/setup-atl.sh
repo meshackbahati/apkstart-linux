@@ -13,9 +13,9 @@ run() { printf '+ %s\n' "$*"; "$@"; }
 say "Distribution: $ID; portable prefix: $ATL_ROOT"
 case "$ID" in
   arch|manjaro|endeavouros|cachyos)
-    run sudo pacman -S --needed git meson ninja jdk17-openjdk maven gtk4 libportal \
+    run sudo pacman -S --needed git meson ninja jdk17-openjdk maven ant gtk4 libportal libportal-gtk4 \
       webkitgtk-6.0 speech-dispatcher alsa-lib ffmpeg openxr libsecret libdrm \
-      libgudev libwebp lz4 libcap sqlite python
+      libgudev libwebp lz4 libcap glib2-devel wayland-protocols sqlite python
     ;;
   *)
     printf 'Automatic ATL setup is implemented for Arch-based systems. On other distributions, follow https://gitlab.com/android_translation_layer/android_translation_layer/-/blob/master/doc/Build.md and install into %s.\n' "$ATL_ROOT" >&2
@@ -81,6 +81,7 @@ fi
 say "Installing ATL into the portable prefix"
 (
   cd android_translation_layer
+  export PATH="$ATL_ROOT/bin:$PATH"
   export PKG_CONFIG_PATH="$ATL_ROOT/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
   export LD_LIBRARY_PATH="$ATL_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   export LIBRARY_PATH="$ATL_ROOT/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
