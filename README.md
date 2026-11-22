@@ -3,9 +3,13 @@
 <p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
 
 [![CI](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml/badge.svg)](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/RoutineMiku/apkstart?include_prereleases&sort=semver)](https://github.com/RoutineMiku/apkstart/releases)
+[![Release](https://img.shields.io/github/v/release/meshackbahati/apkstart?include_prereleases&sort=semver)](https://github.com/meshackbahati/apkstart/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D6.svg)](#)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64-3C9.svg)](#)
+
+**This repository is a Linux fork of [RoutineMiku/apkstart](https://github.com/RoutineMiku/apkstart).** It keeps the original idea of running Android applications as ordinary desktop applications, but targets Linux desktops: APK file association through `xdg-mime`, `.desktop` launchers, a KVM-accelerated Android emulator, native emulator windows, and conservative memory defaults. See [docs/LINUX.md](docs/LINUX.md) for the full Linux guide.
+
+The description below is retained from the upstream Windows project and describes the shared design; the Windows installers and release assets are published by the upstream repository.
 
 **Windows 上的安卓应用运行器 —— 让安卓应用像 Windows 原生软件一样被安装和使用。**
 注：本项目为早期版本，作者自娱自乐产物，所有修改都是作者下班和休息日在处理，开源免费，不插广告，暂时也不是很好用，没有找过营销号推广，无妄之灾。
@@ -33,6 +37,20 @@
 │  模拟器窗口 = 应用窗口（改标题、换图标、竖屏比例、全屏居中） │
 └────────────────────────────────────────────────────────────┘
 ```
+
+## Linux quick start
+
+The Linux build uses the same runtime as the upstream project, but downloads the Linux `platform-tools` and emulator archives from Google on first use. The Android system image is platform-independent.
+
+Requirements are an x86_64 Linux desktop session, an accessible `/dev/kvm`, and firmware virtualization enabled (Intel VT-x or AMD SVM). On most distributions the user must belong to the `kvm` group.
+
+1. Obtain a Linux AppImage from this fork's releases, or build one with `npm run pack:linux`.
+2. Start ApkStart and enable **Associate .apk files** in the settings. This writes an `apkstart-apk.desktop` handler for `application/vnd.android.package-archive` and records the previous default so it can be restored later.
+3. Double-click an `.apk`, `.xapk` or `.apks` in the file manager. ApkStart parses the package offline, installs it, and writes `.desktop` launchers to the desktop and to `~/.local/share/applications`.
+4. Click the application icon to launch. The emulator window is the application window, with native keyboard and mouse input. KVM acceleration and host GPU rendering are used when available; games follow the same path.
+5. When no application is active, the runtime becomes idle and exits after five minutes by default. The quickboot snapshot is retained so the next launch is fast.
+
+The automatic guest budget on Linux is 2 GB of RAM and 2 vCPUs, prewarming is disabled, and one application runs at a time. Manual values in the settings always take precedence. The background download and boot path were verified on a KVM-capable host; see [docs/LINUX.md](docs/LINUX.md) for details and known limitations.
 
 ## 下载即用（不想编译）
 
