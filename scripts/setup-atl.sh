@@ -31,6 +31,9 @@ if [ ! -d wolfssl ]; then
   run git clone --depth 1 --branch v5.8.2-stable https://github.com/wolfSSL/wolfssl.git
 fi
 say "Installing wolfSSL into the portable prefix"
+if [ -f "$ATL_ROOT/include/wolfssl/options.h" ] && [ -e "$ATL_ROOT/lib/libwolfssl.so" ]; then
+  printf 'wolfSSL already installed in the portable prefix; skipping.\n'
+else
 (cd wolfssl && run autoreconf -i \
   && run ./configure --prefix="$ATL_ROOT" --enable-shared --disable-opensslall \
      --disable-opensslextra --enable-aescbc-length-checks --enable-curve25519 \
@@ -38,6 +41,7 @@ say "Installing wolfSSL into the portable prefix"
      --enable-tlsx --enable-scrypt --disable-examples --enable-crl --enable-jni \
      --enable-sessioncerts CFLAGS="-Wno-error -Wno-error=stringop-truncation" \
   && run make -j"$(nproc)" && run make install) || exit 1
+fi
 
 if [ ! -d bionic_translation ]; then
   say "Fetching bionic_translation"
