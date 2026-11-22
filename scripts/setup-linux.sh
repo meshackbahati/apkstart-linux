@@ -75,9 +75,19 @@ if command -v key2touch >/dev/null 2>&1; then
     OUT="$(wayland-info 2>/dev/null | grep -m1 'name:' | awk '{print $2}' | tr -d ',')"
     [ -n "$OUT" ] && K2T set output "$OUT" -p universal >/dev/null 2>&1 || true
     K2T point add stick 28% 70% --keys w,a,s,d -p universal >/dev/null 2>&1 || true
-    K2T point add tap space 85% 78% -p universal >/dev/null 2>&1 || true
-    K2T point add tap enter 80% 53% -p universal >/dev/null 2>&1 || true
-    K2T point add tap lmb 70% 88% -p universal >/dev/null 2>&1 || true
+    K2T point add look 62% 38% --sens 1.0 --size 0.18 -p universal >/dev/null 2>&1 || true
+    K2T point add tap lmb 88% 62% -p universal >/dev/null 2>&1 || true
+    K2T point add tap rmb 88% 70% -p universal >/dev/null 2>&1 || true
+    K2T point add tap space 85% 80% -p universal >/dev/null 2>&1 || true
+    K2T point add tap enter 78% 54% -p universal >/dev/null 2>&1 || true
+    K2T point add tap q 70% 62% -p universal >/dev/null 2>&1 || true
+    K2T point add tap e 76% 62% -p universal >/dev/null 2>&1 || true
+    K2T point add tap r 82% 62% -p universal >/dev/null 2>&1 || true
+    K2T point add tap lshift 70% 78% -p universal >/dev/null 2>&1 || true
+    K2T point add tap lctrl 76% 86% -p universal >/dev/null 2>&1 || true
+    K2T point add tap 1 92% 44% -p universal >/dev/null 2>&1 || true
+    K2T point add tap 2 92% 50% -p universal >/dev/null 2>&1 || true
+    K2T point add tap 3 92% 56% -p universal >/dev/null 2>&1 || true
   fi
   K2T set only-focused false -p universal >/dev/null 2>&1 || true
   K2T hide >/dev/null 2>&1 || true
