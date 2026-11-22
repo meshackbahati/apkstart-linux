@@ -40,3 +40,40 @@ jobs:
           $out = & .\test\pointer-hook-logic.ps1
           $out | ForEach-Object { Write-Host $_ }
           if (-not ($out -contains 'POINTER_HOOK_LOGIC_OK')) { exit 1 }
+
+  linux:
+    name: Unit tests and CLI smoke (Linux / Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check helper scripts
+        run: |
+          bash -n scripts/*.sh
+          python3 -m py_compile scripts/translate-key2touch.py
+
+      # The CLI must work without Electron, a running runtime or root access.
+      - name: CLI smoke
+        run: |
+          node bin/apkstart.js --version
+          node bin/apkstart.js --help
+          node bin/apkstart.js init --check
+          node bin/apkstart.js --list

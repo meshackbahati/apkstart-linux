@@ -9,6 +9,32 @@ permissions:
   contents: write
 
 jobs:
+  linux-appimage:
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build AppImage
+        run: npm run pack:linux
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: apkstart-linux-appimage
+          path: dist/*.AppImage
+          if-no-files-found: error
+
   build:
     name: 构建便携版并发布
     runs-on: windows-latest
