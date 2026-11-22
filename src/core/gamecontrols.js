@@ -85,12 +85,12 @@ class GameControls {
     if (profile) this.profile = profile;
     if (!await this._ensureDaemon()) return { ok: false, error: 'key2touch daemon did not start' };
     this._call(['profile', 'use', this.profile]);
-    // Restrict capture to Waydroid windows so ordinary Linux applications keep
-    // the keyboard and mouse, even when key2touch is enabled by default.
-    this._call(['set', 'only-focused', 'true', '-p', this.profile]);
-    this._call(['window', 'add', 'waydroid.*', '-p', this.profile]);
-    // Show the on-screen HUD so the controller is visibly present during a game.
-    this._call(['show']);
+    // KDE does not expose reliable window focus to key2touch, so a focus rule
+    // leaves the mapping inactive even while the game is running. Mapping is
+    // enabled only for the lifetime of an ApkStart game process instead.
+    this._call(['set', 'only-focused', 'false', '-p', this.profile]);
+    // Hide the on-screen buttons: the user wants physical keyboard control.
+    this._call(['hide']);
     const r = this._call(['on']);
     this._enabled = /已开启|enabled|true/.test(`${r.stdout}${r.stderr}`) || r.ok;
     return { ok: this._enabled };

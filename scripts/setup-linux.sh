@@ -79,8 +79,8 @@ if command -v key2touch >/dev/null 2>&1; then
     K2T point add tap enter 80% 53% -p universal >/dev/null 2>&1 || true
     K2T point add tap lmb 70% 88% -p universal >/dev/null 2>&1 || true
   fi
-  K2T set only-focused true -p universal >/dev/null 2>&1 || true
-  K2T window add 'waydroid.*' -p universal >/dev/null 2>&1 || true
+  K2T set only-focused false -p universal >/dev/null 2>&1 || true
+  K2T hide >/dev/null 2>&1 || true
   # key2touch ships Chinese messages; keep the installed package English.
   runroot python3 "$ROOT/scripts/translate-key2touch.py" >/dev/null 2>&1 || true
   K2T check -p universal --json 2>/dev/null | head -12
