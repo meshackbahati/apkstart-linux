@@ -19,7 +19,9 @@ function makeBackend(overrides = {}) {
   const replies = Object.assign({
     'command -v waydroid': { ok: true, stdout: '/usr/bin/waydroid\n', stderr: '' },
     'waydroid status': { ok: true, stdout: 'State: RUNNING\n', stderr: '' },
+    'waydroid adb connect': { ok: true, stdout: 'Established ADB connection\n', stderr: '' },
     'adb connect': { ok: true, stdout: `connected to ${SERIAL}\n`, stderr: '' },
+    'adb devices': { ok: true, stdout: `List of devices attached\n192.168.240.112:5555\tdevice\n`, stderr: '' },
   }, overrides.replies || {});
   const run = (cmd, args = [], opts = {}) => {
     calls.push([cmd, ...args].join(' '));
@@ -52,7 +54,7 @@ function makeBackend(overrides = {}) {
     });
     const r = await backend.ensure();
     assert.equal(r.ok, true);
-    assert.equal(r.serial, SERIAL);
+    assert.equal(r.serial, '192.168.240.112:5555');
     assert.equal(r.adbPath, '/usr/bin/adb');
     assert.ok(calls.some((c) => c === 'waydroid session start'));
     assert.ok(calls.some((c) => c.includes('adb connect')));

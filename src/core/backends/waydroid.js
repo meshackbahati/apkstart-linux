@@ -19,6 +19,15 @@ const platform = require('../platform');
 const ADB_PORT = 16384;
 const SERIAL = `127.0.0.1:${ADB_PORT}`;
 
+/** Waydroid 1.6.x exposes adb on the container IP; older builds use the local bridge. */
+function detectSerial(run, adbPath) {
+  const devices = run(adbPath, ['devices'], { timeout: 10000 });
+  const lines = String(devices.stdout || '').split(/\r?\n/).slice(1);
+  const online = lines.find((l) => /\s+device$/.test(l.trim()));
+  if (online) return online.trim().split(/\s+/)[0];
+  return SERIAL;
+}
+
 function defaultRun(cmd, args, opts = {}) {
   const { spawnSync } = require('child_process');
   const r = spawnSync(cmd, args, {
@@ -91,15 +100,21 @@ class WaydroidBackend extends Backend {
     }
     const adbPath = this.adbPath || this._findAdb();
     if (!adbPath) return { ok: false, error: 'adb not found' };
-    const connected = this.run(adbPath, ['connect', SERIAL]);
-    const text = `${connected.stdout}${connected.stderr}`;
-    if (!/connected|already connected/i.test(text)) {
-      return { ok: false, error: `adb connect ${SERIAL} failed: ${text.trim()}` };
+    // Waydroid 1.6+ provides `waydroid adb connect`; older builds need the
+    // local bridge. Try both, then read the actual serial from adb devices.
+    const viaWaydroid = this.run('waydroid', ['adb', 'connect'], { timeout: 20000 });
+    if (!viaWaydroid.ok) {
+      const connected = this.run(adbPath, ['connect', SERIAL]);
+      const text = `${connected.stdout}${connected.stderr}`;
+      if (!/connected|already connected/i.test(text)) {
+        return { ok: false, error: `adb connect failed: ${text.trim()}` };
+      }
     }
+    const serial = detectSerial(this.run, adbPath);
     this.adbPath = adbPath;
     this._running = true;
-    this.serial = SERIAL;
-    return { ok: true, serial: SERIAL, adbPath, reused: true, engine: 'waydroid' };
+    this.serial = serial;
+    return { ok: true, serial, adbPath, reused: true, engine: 'waydroid' };
   }
 
   _findAdb() {
