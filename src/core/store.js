@@ -107,9 +107,9 @@ const DEFAULT_SETTINGS = {
   priorityMode: 'balanced',
     // 预热：启动 ApkStart 后在后台把安卓环境引导好，第一次点应用几乎不用等。
     // 代价是常驻约 1GB 内存（和 WSA / 应用宝电脑版一样的取舍），可随时关掉。
-    // Linux 默认不预热：预热意味着安卓常驻约 1GB，与「内存高效」冲突；
-    // quickboot 快照已经把二次启动压到约 10 秒。用户在设置里可自行打开。
-    prewarm: process.platform !== 'linux',
+    // 预热让点开应用接近瞬时；Linux 上仍保留 5 分钟空闲回收，
+    // 因此常驻只在用户活跃期间发生，之后安卓会被关掉。
+    prewarm: true,
     // 多窗口（B 方案）：允许同时打开多个应用、各自独立窗口。默认关闭，
     // 保持「开新停旧」的单窗口行为；开启后靠墓碑机制回收后台，资源可控。
     multiWindow: false,
@@ -182,14 +182,16 @@ const DEFAULT_SETTINGS = {
     autoFullscreenOnLaunch: false,
     // 横屏 = 把 AVD 物理面板换成 1280x720 并重启（唯一能得到正立+铺满的方式）。
     // 持久化在这里，重启 ApkStart 后仍按这个方向开机。
-    landscape: false,
+    // Linux 上默认横屏面板：模拟器窗口是 16:9 的桌面形状而不是竖屏手机形状。
+    // 单独的应用仍可在设置里改回竖屏或使用自动方向。
+    landscape: process.platform === 'linux',
     // 屏幕方向策略：
     //   auto      = 按应用自己声明的方向自动换物理面板（推荐，只有这样画面才能铺满窗口）
     //   landscape = 强制横屏面板
     //   portrait  = 强制竖屏面板
     // 上面的 landscape 字段在 auto 模式下退化成「当前面板实际方向」这个事实，
     // 由 restartForOrientation 写入，不再当偏好去覆盖应用自己的方向。
-    orientationMode: 'auto',
+    orientationMode: process.platform === 'linux' ? 'landscape' : 'auto',
     // 平板排版：把 guest 的逻辑密度覆盖成 190dpi（720 宽 → sw606dp ≥ 600dp，
     // 越过 Android 的平板断点）。红果短剧这类应用只有在平板排版下才有双列剧集页，
     // 也是用户要的「平板模式」。关掉就回到镜像默认密度（手机排版）。

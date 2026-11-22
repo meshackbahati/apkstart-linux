@@ -35,7 +35,8 @@ The Linux defaults are deliberately conservative because the desktop session sha
 | Guest memory | 2048 MB automatic ceiling | About 1 GB less resident memory than the previous 3 GB profile, and a smaller snapshot |
 | Guest vCPUs | 2 | Avoids starving the desktop session |
 | Resource strategy | `save` | Applies both limits, with reduced rendering resolution |
-| Prewarming | off | No always-on Android process; the quickboot snapshot is used instead |
+| Prewarming | on | Applications open without waiting for a boot while the user is active |
+| Panel shape | 1280×720 landscape | A desktop-shaped window instead of a portrait phone panel |
 | Idle shutdown | 5 minutes | The runtime exits when no app is open |
 | Background apps | one at a time by default | Opening another app force-stops the previous one, returning its memory |
 | Snapshot | on | Disk trade-off only; it does not keep the emulator resident |
@@ -55,5 +56,6 @@ The following was observed on an x86_64 host with accessible `/dev/kvm`, using a
 ## Known limitations
 
 - Automatic updates replace the AppImage in place by generating a POSIX shell script. The AppImage runtime sets `APPIMAGE`, which the updater uses as the replacement target. Extracted or package-manager installs have no single replaceable file, so they fall back to the **open download page** action.
+- During verification, a full stop and restart of this QEMU AVD sometimes lost applications installed in the previous session. Keeping prewarming enabled avoids the restart during normal use. A shared-kernel Android container would be required for reliable per-application windows and state; that is a separate, larger effort.
 - Window embedding (`SetParent`) is a Windows-only feature and is skipped on Linux; the emulator always uses its own window.
 - `/dev/kvm` must be readable and writable. Most distributions require membership of the `kvm` group; log out and back in after adding the user.

@@ -2350,7 +2350,8 @@ const platform = require('../src/core/platform');
     assert(/function detectOrientation\(/.test(apkJs), '要从 APK 清单离线判断应用方向');
     assert(/orientation,/.test(apkJs), 'parseApk 要返回 orientation');
     assert(/orientation: meta\.orientation/.test(installerJs), '安装时要把方向存进 apps.json');
-    assert(/orientationMode: 'auto'/.test(storeJs), '默认策略是跟随应用');
+    assert(/orientationMode:\s*(?:'auto'|process\.platform === 'linux' \? 'landscape' : 'auto')/.test(storeJs),
+      '默认策略是跟随应用（Linux 上为了桌面形状默认横屏）');
     // 老数据回填：不补就还是黑边
     assert(/orientation backfill/.test(mainJs), '老版本装的应用要回填方向');
   });

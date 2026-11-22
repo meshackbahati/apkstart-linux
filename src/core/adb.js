@@ -653,32 +653,43 @@ class AdbClient {
     const modes = freeform
       ? [['--windowingMode', '5'], []]
       : [[]];
+    // 解析出来的 Activity 可能是别名（F-Droid 的 IconActivity 就是一例），
+    // am start 返回成功但进程并不会起来。组件失败后再用 LAUNCHER intent 试一次。
+    const launcherIntent = ['-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', pkg];
+    const intents = comp ? [intent, launcherIntent] : [intent];
     let lastError = '';
 
-    for (const mode of modes) {
-      const parts = ['am', 'start', ...mode, '--activity-clear-top', ...intent];
-      let out = '';
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        out = await this.shell(parts.join(' '), { timeout: 20000 });
-      } catch (e) {
-        lastError = String(e.message || e);
-        continue;
-      }
-      if (/Error|Exception/i.test(out)) { lastError = out; continue; }
+    for (const candidate of intents) {
+      for (const mode of modes) {
+        const parts = ['am', 'start', ...mode, '--activity-clear-top', ...candidate];
+        let out = '';
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          out = await this.shell(parts.join(' '), { timeout: 20000 });
+        } catch (e) {
+          lastError = String(e.message || e);
+          continue;
+        }
+        if (/Error|Exception/i.test(out)) { lastError = out; continue; }
 
-      if (bounds) this.resizeTaskOfPackage(pkg, bounds).catch(() => {});
-      // eslint-disable-next-line no-await-in-loop
-      const alive = await this.waitAppAlive(pkg, 6000);
-      if (alive.ok) return out;
-      if (alive.uncertain) return `${out}\n（应用仍在加载中）`;
-      lastError = alive.crash || lastError;
-      // 崩溃日志明确指向 ARM 翻译层时不再重试，直接交给上层切换兼容镜像
-      if (/DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|dlopen failed/i.test(alive.crash || '')) {
-        const err = new Error(friendlyLaunchError(alive.crash, pkg));
-        err.code = 'APP_CRASHED';
-        err.crash = alive.crash;
-        throw err;
+        if (bounds) this.resizeTaskOfPackage(pkg, bounds).catch(() => {});
+        // eslint-disable-next-line no-await-in-loop
+        const alive = await this.waitAppAlive(pkg, 6000);
+        if (alive.ok) return out;
+        // 「不确定」不能当成成功直接返回：那样会跳过后面所有降级方式。
+        // 继续试下一个模式，真实的错误留给最后统一处理。
+        if (alive.uncertain) {
+          if (!lastError) lastError = `App process did not appear within 6s after ${parts.join(' ')}`;
+          continue;
+        }
+        lastError = alive.crash || lastError;
+        // 崩溃日志明确指向 ARM 翻译层时不再重试，直接交给上层切换兼容镜像
+        if (/DoBadTrampoline|libndk_translation|UnsatisfiedLinkError|dlopen failed/i.test(alive.crash || '')) {
+          const err = new Error(friendlyLaunchError(alive.crash, pkg));
+          err.code = 'APP_CRASHED';
+          err.crash = alive.crash;
+          throw err;
+        }
       }
     }
 

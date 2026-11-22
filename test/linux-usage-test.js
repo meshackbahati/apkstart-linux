@@ -100,12 +100,14 @@ async function test(name, fn) {
 
   console.log('\n[Linux 使用体验：默认内存与窗口策略]');
 
-  await test('Linux 默认不预热，空闲 5 分钟回收，原生窗口', () => {
+  await test('Linux 默认预热且快速回收，横屏桌面形状，原生窗口', () => {
     const s = store.getSettings();
-    assert.equal(s.engine.prewarm, false);
+    assert.equal(s.engine.prewarm, true);
     assert.equal(s.engine.idleShutdownMinutes, 5);
     assert.equal(s.engine.resourceMode, 'save');
     assert.equal(s.display.windowEmbed, false);
+    assert.equal(s.display.landscape, true);
+    assert.equal(s.display.orientationMode, 'landscape');
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);

@@ -50,7 +50,7 @@ Requirements are an x86_64 Linux desktop session, an accessible `/dev/kvm`, and 
 4. Click the application icon to launch. The emulator window is the application window, with native keyboard and mouse input. KVM acceleration and host GPU rendering are used when available; games follow the same path.
 5. When no application is active, the runtime becomes idle and exits after five minutes by default. The quickboot snapshot is retained so the next launch is fast.
 
-The automatic guest budget on Linux is 2 GB of RAM and 2 vCPUs, prewarming is disabled, and one application runs at a time. Manual values in the settings always take precedence. The background download and boot path were verified on a KVM-capable host; see [docs/LINUX.md](docs/LINUX.md) for details and known limitations.
+The automatic guest budget on Linux is 2 GB of RAM and 2 vCPUs. Prewarming keeps the runtime ready while applications are in use, and idle shutdown returns the memory after five minutes. The default panel is a 1280×720 landscape window rather than a phone-shaped portrait window. Manual values in the settings always take precedence. The background download and boot path were verified on a KVM-capable host; see [docs/LINUX.md](docs/LINUX.md) for details and known limitations.
 
 ## 下载即用（不想编译）
 
