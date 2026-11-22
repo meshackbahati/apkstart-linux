@@ -550,10 +550,17 @@ class Installer {
       }
     }
     const settings = store.getSettings();
-    const start = () => rt.client.startApp(app ? app.package : pkg, app ? app.activity : null, {
-      freeform: settings.freeform,
-      bounds: app ? app.bounds : null,
-    });
+    const backend = this.runtime && this.runtime.backend;
+    const start = () => {
+      // Waydroid creates an ordinary desktop window per application.
+      if (backend && backend.id === 'waydroid' && typeof backend.launchApp === 'function') {
+        return backend.launchApp(app ? app.package : pkg);
+      }
+      return rt.client.startApp(app ? app.package : pkg, app ? app.activity : null, {
+        freeform: settings.freeform,
+        bounds: app ? app.bounds : null,
+      });
+    };
     // 应用可能还没装进当前运行时（镜像重建 / 清过数据 / 首次），直接拉起会报
     // "Invalid packageName"。先在本地缓存里把它装上再启动，这样「点开应用」永远能进，
     // 不用先手动装一遍——这正是「点击已安装应用直接进入系统」想要的体验。

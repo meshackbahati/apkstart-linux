@@ -120,6 +120,8 @@ class Runtime {
   // ---------------- 基础 ----------------
 
   adbPath() {
+    const backend = this._backend;
+    if (backend && backend.id === 'waydroid' && backend.adbPath) return backend.adbPath;
     const s = this.settings;
     const p = this.provisioner.paths();
     // 自带 adb 永远排在第一位：同一台设备只认一份 adb 状态，不会出现 offline 反复抖动。
@@ -131,7 +133,9 @@ class Runtime {
   }
 
   client(serial) {
-    const useSerial = serial || this.emuSerial;
+    const backend = this._backend;
+    const defaultSerial = backend && backend.id === 'waydroid' ? backend.serial : this.emuSerial;
+    const useSerial = serial || defaultSerial;
     const adbPath = this.adbPath();
     if (!this._client || this._client.serial !== useSerial || this._client.adbPath !== adbPath) {
       // 换端口/换 adb 时别把旧的常驻 adb shell 留在后台占着连接
@@ -724,6 +728,10 @@ class Runtime {
 
   /** 优雅停止：emulator 走控制台关机，QEMU 走 monitor */
   async stop({ graceful = true } = {}) {
+    if (this._backend && this._backend.id === 'waydroid') {
+      const r = await this._backend.stop({ graceful }).catch((e) => ({ ok: false, error: e.message }));
+      return !!(r && r.ok);
+    }
     // 运行时一停，之前缓存的 guest 网络结论立即作废。否则旋转/重启后新机器
     // 还没联网，waitForNetwork 却因为 8 秒缓存直接返回 ok，应用又会黑屏。
     this._lastNetwork = null;
@@ -990,6 +998,11 @@ class Runtime {
   }
 
   async _ensureInner({ onLog = () => {} } = {}) {
+    if (this.backend.id === 'waydroid') {
+      const r = await this.backend.ensure({ onLog });
+      if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'Waydroid backend unavailable', needsSetup: 'backend' };
+      return { ok: true, client: this.client(), reused: true, backend: 'waydroid', engine: 'waydroid' };
+    }
     const client = this.client();
     if (await client.isOnline()) {
       /**

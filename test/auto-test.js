@@ -960,12 +960,12 @@ const platform = require('../src/core/platform');
     assert(!/w:\s*Math\.min\(area\.w - 80, 1280\)/.test(appwinJs), '不能再写死 1280 宽（会被模拟器夹成竖条）');
   });
 
-  await test('只有一个运行时：注册表固定 builtin，装了什么模拟器都不影响', () => {
+  await test('默认运行时是 builtin，外部模拟器不会自动接管', () => {
     const backends = require('../src/core/backends');
-    // 0.5.6 起不再有自动挑选：不管本机装了 MuMu / 雷电 / 蓝叠 / WSA，
-    // 都只跑 ApkStart 自己的运行时，只按设置读也不会有第二个候选。
-    assert(backends.REGISTRY.length === 1, '注册表里出现了第二个底座');
-    assert(backends.REGISTRY[0].id === 'builtin', '唯一底座不是 builtin');
+    // 没有自动探测：本机装了第三方模拟器也不会被接管。
+    // Waydroid 是 Linux 上显式 opt-in 的底座，不是自动候选。
+    assert(backends.REGISTRY[0].id === 'builtin', '默认底座不是 builtin');
+    assert(backends.autoPick && typeof backends.autoPick === 'function', '缺少 autoPick');
   });
 
   await test('窗口标题改 ApkStart：识别逻辑必须同时认新标题', () => {

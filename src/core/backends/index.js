@@ -19,9 +19,14 @@
 
 const { Backend, CAPS } = require('./base');
 const { BuiltinBackend } = require('./builtin');
+const { WaydroidBackend } = require('./waydroid');
 
+// builtin remains the default. Waydroid is opt-in on Linux because it runs
+// applications as native windows and keeps their state across restarts, but
+// it needs a working Waydroid installation and a Wayland session.
 const REGISTRY = [
   BuiltinBackend,
+  WaydroidBackend,
 ];
 
 /** 唯一底座。保留这个常量，是给「以后真要加底座」的地方留个明确落点。 */
@@ -51,9 +56,9 @@ function describe() {
  * @param {object} o { appRoot, settings, runtime, store, log, id }
  * @returns {{ backend: Backend, Cls: Function, id: string }}
  */
-function create({ appRoot, runtime, store, log, id: forced } = {}) {
-  // 显式传了别的 id（旧代码的回退路径）也一律落到 builtin
-  const id = forced && byId(forced) ? forced : ONLY;
+function create({ appRoot, runtime, store, log, id: forced, settings } = {}) {
+  const wanted = forced || (settings && settings.runtime && settings.runtime.backend) || ONLY;
+  const id = byId(wanted) ? wanted : ONLY;
   const Cls = byId(id) || BuiltinBackend;
   const backend = new Cls(appRoot, { runtime, store, log });
   return { backend, Cls, id: Cls.id };

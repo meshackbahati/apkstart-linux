@@ -53,6 +53,22 @@ The following was observed on an x86_64 host with accessible `/dev/kvm`, using a
 - `assets/PinyinIME.apk` was parsed offline, installed through the same adb client (`Success`), resolved by `pm path`, and its launch activity was started with `am start`.
 - Stopping the runtime produced a quickboot snapshot; the subsequent boot took about 63 seconds instead of a full cold boot.
 
+## Waydroid backend (experimental)
+
+For true per-application desktop windows and persistent application state, the Linux build can use Waydroid instead of QEMU. Waydroid runs Android in a shared-kernel LXC container, so each application is a normal Wayland or X11 window and `/data` survives restarts.
+
+Prerequisites: a Wayland session, `/dev/binder` and `/dev/ashmem`, a render node under `/dev/dri`, and a Waydroid installation with its container image initialised. NVIDIA proprietary drivers are not supported by Waydroid.
+
+The backend is opt-in. Add the following to the settings file (`$XDG_DATA_HOME/apkstart/settings.json`, or `~/.local/share/apkstart/settings.json` by default):
+
+```json
+{
+  "runtime": { "backend": "waydroid" }
+}
+```
+
+ApkStart then connects to Waydroid's adb bridge at `127.0.0.1:16384` using the bundled adb, and launches applications through `waydroid app launch`, which creates their native windows. The default remains the self-contained QEMU runtime; no external runtime is ever selected automatically.
+
 ## Known limitations
 
 - Automatic updates replace the AppImage in place by generating a POSIX shell script. The AppImage runtime sets `APPIMAGE`, which the updater uses as the replacement target. Extracted or package-manager installs have no single replaceable file, so they fall back to the **open download page** action.
