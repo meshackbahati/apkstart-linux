@@ -54,6 +54,6 @@ The following was observed on an x86_64 host with accessible `/dev/kvm`, using a
 
 ## Known limitations
 
-- The auto-updater still uses a Windows PowerShell replacement script. On Linux, use the **open download page** action and replace the AppImage manually.
+- Automatic updates replace the AppImage in place by generating a POSIX shell script. The AppImage runtime sets `APPIMAGE`, which the updater uses as the replacement target. Extracted or package-manager installs have no single replaceable file, so they fall back to the **open download page** action.
 - Window embedding (`SetParent`) is a Windows-only feature and is skipped on Linux; the emulator always uses its own window.
 - `/dev/kvm` must be readable and writable. Most distributions require membership of the `kvm` group; log out and back in after adding the user.

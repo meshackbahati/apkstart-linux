@@ -21,6 +21,7 @@ const { downloadAny, downloadAnyParallel, downloadMulti, sha256File } = require(
 const { ZipFile, resolveZipEntry } = require('./zip');
 const { cmpVer } = require('./version');
 const { Sources } = require('./sources');
+const platform = require('./platform');
 const inc = require('./incremental');
 
 const OWNER = 'RoutineMiku';
@@ -29,6 +30,11 @@ const REPO = 'apkstart';
 /** PowerShell 单引号字符串：内部的 ' 要写成 '' */
 function psq(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
+}
+
+/** POSIX shell 单引号字符串：内部的 ' 要写成 '\'' */
+function shq(s) {
+  return `'${String(s).replace(/'/g, "'\\''")}'`;
 }
 
 /** 在目录第一层里按名字（大小写不敏感）找文件，返回实际名字或 null */
@@ -106,10 +112,15 @@ class Updater {
     const isRuntimePack = (a) => inc.isAuxAsset((a && a.name) || '');
 
     const wantSetup = this.flavor === 'setup';
-    const asset = wantSetup
-      ? (pick(/Setup\.exe$/i) || merged.assets.find((a) => /\.exe$/i.test(a.name) && !isRuntimePack(a)))
-      : (pick(/portable.*\.zip$/i) || pick(/win64.*\.zip$/i)
-        || merged.assets.find((a) => /\.zip$/i.test(a.name) && !isRuntimePack(a)));
+    // Linux 上唯一能自动替换的是 AppImage；Windows 的 zip / Setup.exe 在这里
+    // 既不能执行也换不掉正在运行的文件，宁可只给发布页入口也不要误下载。
+    const linuxAsset = pick(/linux.*\.AppImage$/i) || pick(/\.AppImage$/i);
+    const asset = platform.isLinux()
+      ? linuxAsset
+      : (wantSetup
+        ? (pick(/Setup\.exe$/i) || merged.assets.find((a) => /\.exe$/i.test(a.name) && !isRuntimePack(a)))
+        : (pick(/portable.*\.zip$/i) || pick(/win64.*\.zip$/i)
+          || merged.assets.find((a) => /\.zip$/i.test(a.name) && !isRuntimePack(a))));
 
     // 增量资产：清单 + 代码包。两者都在、且本机 Electron 版本对得上时才可能走增量；
     // 完整包始终作为兜底留在 asset 里——增量任何一步出问题都能无缝退回整包。
@@ -146,7 +157,8 @@ class Updater {
       hasUpdate: cmpVer(merged.tag, this.current) > 0,
       current: this.current,
       canAutoApply: !!asset && (!!asset.url || !!(asset.parts && asset.parts.length)),
-      // 是否有可能走增量：prepare() 会下载清单解析后再做最终判定（版本/哈希）
+      // 增量替换写的是 resources/app；AppImage 在运行中不可写，prepare()
+      // 在 Linux 上会先选 AppImage 整包路径，因此这里保留清单信息不影响行为。
       incremental: this.flavor === 'portable' && !!manifestAsset && !!appAsset
         ? { manifest: manifestAsset, app: appAsset }
         : null,
@@ -164,6 +176,10 @@ class Updater {
     if (!it || !it.asset) throw new Error('这个版本没有可自动安装的安装包，请到 GitHub 发布页手动下载');
     const dir = path.join(this.updateDir, it.version);
     fs.mkdirSync(dir, { recursive: true });
+
+    if (platform.isLinux() && /\.AppImage$/i.test(it.asset.name || '')) {
+      return this._prepareAppImage(it, dir);
+    }
 
     // 优先尝试增量：只下清单 + 代码包（几 MB），本机 Electron 版本一致、逐文件
     // 哈希都对得上才采用。任何一步不满足就当作没增量，无缝退回下面的完整包下载。
@@ -243,6 +259,48 @@ class Updater {
     }
     this.onProgress({ stage: 'ready', percent: 100, message: '安装包已下载完成' });
     return { mode: 'setup', payload: file, version: it.version };
+  }
+
+  /**
+   * Linux：下载 AppImage 整包并校验魔数。AppImage 自带运行时，不需要解压，
+   * 替换时也只要覆盖一个文件，比 Windows 的目录覆盖简单得多。
+   */
+  async _prepareAppImage(it, dir) {
+    const file = path.join(dir, it.asset.name);
+    const conns = Math.max(1, Math.min(16, Number((this.settings().runtime || {}).downloadConnections) || 8));
+    const existing = fs.existsSync(file) ? fs.statSync(file).size : 0;
+    if (existing > 32 * 1024 * 1024) {
+      this.onProgress({ stage: 'ready', percent: 100, message: '已有下载好的 AppImage，直接复用' });
+    } else {
+      const ranked = await this.sources.rank(this.sources.candidates(it.asset), {
+        onProgress: (p) => this.onProgress(p),
+      }).catch(() => this.sources.candidates(it.asset));
+      const sizes = it.asset.sizes || {};
+      let total = it.asset.size || 0;
+      for (const u of ranked) { if (sizes[u]) { total = sizes[u]; break; } }
+      this.onProgress({ stage: 'download', percent: 1, message: `正在下载 ${it.asset.name}…` });
+      await downloadMulti(ranked, file, {
+        connections: conns,
+        onProgress: (pr) => {
+          const pct = pr.percent != null ? pr.percent : (total ? Math.round((pr.got / total) * 100) : 0);
+          this.onProgress({
+            stage: 'download',
+            percent: Math.max(1, Math.min(99, pct)),
+            message: `下载中 ${(pr.got / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB`,
+            speed: pr.speed,
+          });
+        },
+      });
+      const fd = fs.openSync(file, 'r');
+      const magic = Buffer.alloc(12);
+      try { fs.readSync(fd, magic, 0, 12, 0); } finally { fs.closeSync(fd); }
+      if (magic.subarray(8, 12).toString('ascii') !== '7zBXZ') {
+        throw new Error('下载的文件不是有效的 AppImage（缺少 type-2 魔数）');
+      }
+      try { fs.chmodSync(file, 0o755); } catch (_) { /* ignore */ }
+    }
+    this.onProgress({ stage: 'ready', percent: 100, message: 'AppImage 已就绪' });
+    return { mode: 'appimage', payload: file, version: it.version };
   }
 
   /**
@@ -414,10 +472,23 @@ class Updater {
   findResumableJob() {
     try {
       if (!fs.existsSync(this.updateDir)) return null;
-      const versions = fs.readdirSync(this.updateDir)
+      const versions = fs.readdirSync(this.updateDir, { withFileTypes: true })
+        // 更新目录里还有 apply-appimage.sh / apply.log.ps1 之类的脚本文件；
+        // 把非版本号条目喂给 cmpVer 会抛异常，导致整个续做逻辑被 catch 成「没有更新」。
+        .filter((d) => d.isDirectory() && /^\d+(\.\d+){1,3}$/.test(d.name))
+        .map((d) => d.name)
         .filter((n) => cmpVer(n, this.current) > 0)   // 只认比当前更新的版本，避免反复重启
         .sort((a, b) => cmpVer(b, a));
       for (const v of versions) {
+        // Linux AppImage：单个文件就是载荷，没有解压目录
+        const vdir = path.join(this.updateDir, v);
+        const images = fs.readdirSync(vdir).filter((n) => /\.AppImage$/i.test(n));
+        if (images.length) {
+          const image = path.join(vdir, images[0]);
+          if (fs.statSync(image).size > 32 * 1024 * 1024) {
+            return { mode: 'appimage', payload: image, version: v };
+          }
+        }
         // 完整包载荷
         const payload = path.join(this.updateDir, v, 'payload');
         if (this._payloadReady(payload, v)) return { mode: 'zip', payload, version: v };
@@ -443,6 +514,10 @@ class Updater {
     const logFile = path.join(this.updateDir, 'update.log');
     fs.mkdirSync(this.updateDir, { recursive: true });
     const waitPid = opts.waitPid || process.pid;
+
+    if (platform.isLinux() && job.mode === 'appimage') {
+      return this._applyAppImage(job, { waitPid, logFile, spawn: opts.spawn });
+    }
 
     const lines = [
       `$ErrorActionPreference = 'SilentlyContinue'`,
@@ -580,6 +655,50 @@ class Updater {
       '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
       '-WindowStyle', 'Hidden', '-EncodedCommand', b64,
     ], { stdio: 'ignore', windowsHide: true });
+    child.unref();
+    return true;
+  }
+
+  /**
+   * Linux AppImage 的「替换 + 重启」脚本。AppImage 运行时把 APPIMAGE 环境变量
+   * 设为真实文件路径（process.execPath 指向的是 /tmp/.mount_* 里的副本），
+   * 因此必须替换 APPIMAGE 指向的那个文件，否则下次启动还是旧版本。
+   */
+  _applyAppImage(job, { waitPid = process.pid, logFile, spawn: spawnIt = true } = {}) {
+    const target = process.env.APPIMAGE || this.exePath || '';
+    const src = job.payload || '';
+    const lines = [
+      '#!/bin/sh',
+      `LOG=${shq(logFile)}`,
+      `note() { echo "[$(date +%H:%M:%S)] $1" >> "$LOG"; }`,
+      `note 'updater start'`,
+      // 等本进程退出（最多 90 秒），AppImage 文件此时才不再被挂载占用。
+      `pid=${Number(waitPid) || 0}`,
+      `i=0`,
+      `while [ "$i" -lt 180 ] && kill -0 "$pid" 2>/dev/null; do sleep 0.5; i=$((i+1)); done`,
+      `sleep 1`,
+      `SRC=${shq(src)}`,
+      `TARGET=${shq(target)}`,
+      `if [ ! -f "$SRC" ] || [ ! -f "$TARGET" ]; then note 'payload or target missing'; exit 1; fi`,
+      `TMP="$TARGET.apkstart-new.$$"`,
+      `if ! cp "$SRC" "$TMP" || ! chmod 755 "$TMP"; then note 'copy failed'; rm -f "$TMP"; exit 1; fi`,
+      `S1=$(stat -c%s "$SRC"); S2=$(stat -c%s "$TMP")`,
+      `if [ "$S1" != "$S2" ]; then note 'size mismatch'; rm -f "$TMP"; exit 1; fi`,
+      `if ! mv -f "$TMP" "$TARGET"; then note 'replace failed'; rm -f "$TMP"; exit 1; fi`,
+      `note 'replaced'`,
+      `nohup "$TARGET" >/dev/null 2>&1 &`,
+      `note 'relaunched'`,
+      `rm -rf ${shq(path.join(this.updateDir, job.version || ''))}`,
+      `note 'updater done'`,
+      `exit 0`,
+    ];
+    const script = `${lines.join('\n')}\n`;
+    fs.mkdirSync(this.updateDir, { recursive: true });
+    const file = path.join(this.updateDir, 'apply-appimage.sh');
+    fs.writeFileSync(file, script, { encoding: 'utf8', mode: 0o755 });
+    try { fs.chmodSync(file, 0o755); } catch (_) { /* ignore */ }
+    if (spawnIt === false) return script;
+    const child = spawn('/bin/sh', [file], { stdio: 'ignore', detached: true });
     child.unref();
     return true;
   }

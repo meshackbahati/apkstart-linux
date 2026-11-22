@@ -263,6 +263,8 @@ class Sources {
       `ApkStart-${tag}-win64-portable.zip`,
       `ApkStart-${ver}-Setup.exe`,
       `ApkStart-runtime-${tag}.zip`,
+      // Linux 的 AppImage 用四位版本号命名，与 pack:linux 的产物一致
+      `ApkStart-${ver}-linux-x64.AppImage`,
     ];
     // GitHub 和 Gitee 都支持 /releases/download/<tag>/<文件名> 这种规范地址
     // （实测 Gitee 会 302 到 foruda.gitee.com 的附件地址，能正常下到完整字节），

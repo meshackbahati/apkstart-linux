@@ -1480,6 +1480,8 @@ const platform = require('../src/core/platform');
   });
 
   await test('便携版不会把运行时整包（ApkStart-runtime-*.zip）当成更新包', async () => {
+    // Linux 的资产选择是 AppImage 路径，见 linux-update-test.js
+    if (process.platform === 'linux') return;
     const { Updater } = require('../src/core/updater');
     const dir = path.join(TMP, 'upd-asset');
     fs.mkdirSync(dir, { recursive: true });
@@ -1591,6 +1593,8 @@ const platform = require('../src/core/platform');
   });
 
   await test('分片资产必须一路传到 updater.asset，否则 prepare 会报「没有可用的下载地址」', async () => {
+    // Gitee 分片是 Windows 便携包的发布方式，Linux AppImage 不分片
+    if (process.platform === 'linux') return;
     const { Updater } = require('../src/core/updater');
     const u = new Updater({
       currentVersion: '0.0.1', exePath: path.join(TMP, 'A.exe'), isPackaged: true, dataDir: TMP,

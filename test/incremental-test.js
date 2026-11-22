@@ -104,13 +104,15 @@ console.log('\n[增量 · 哈希校验]');
         { name: 'ApkStart-v0.6.3-manifest.json', size: 1, url: 'https://x/m', urls: ['https://x/m'], sizes: {} },
         { name: 'ApkStart-v0.6.3-app.zip', size: 2, url: 'https://x/a', urls: ['https://x/a'], sizes: {} },
         { name: 'ApkStart-v0.6.3-win64-portable.zip', size: 3, url: 'https://x/f', urls: ['https://x/f'], sizes: {} },
+        { name: 'ApkStart-0.6.3-linux-x64.AppImage', size: 4, url: 'https://x/l', urls: ['https://x/l'], sizes: {} },
       ],
       sources: [], unreachable: [],
     });
     const info = await u.check();
     assert(info.incremental && info.incremental.manifest.name.endsWith('manifest.json'), '没认出清单');
     assert(info.incremental.app.name.endsWith('app.zip'), '没认出代码包');
-    assert(info.asset && info.asset.name.endsWith('portable.zip'), '完整包兜底丢了');
+    const fullSuffix = process.platform === 'linux' ? '.AppImage' : 'portable.zip';
+    assert(info.asset && info.asset.name.endsWith(fullSuffix), '完整包兜底丢了');
     assert(info.hasUpdate);
   });
 
