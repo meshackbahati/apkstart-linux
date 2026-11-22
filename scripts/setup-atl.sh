@@ -73,6 +73,8 @@ ln -sfn "$ATL_ROOT/lib/libwolfssl.so" art_standalone/out/host/linux-x86/lib64/li
 (cd art_standalone && LIBRARY_PATH="$ATL_ROOT/lib" LD_LIBRARY_PATH="$ATL_ROOT/lib" \
    run make -j"$(nproc)" ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
   && run make ____LIBDIR=lib ____PREFIX="$ATL_ROOT" install) || exit 1
+# The generated pkg-config file hard-codes the build-time prefix.
+sed -i "s|^prefix=.*|prefix=$ATL_ROOT|" "$ATL_ROOT/lib/pkgconfig/art-standalone.pc"
 
 if [ ! -d android_translation_layer ]; then
   say "Fetching ATL"
