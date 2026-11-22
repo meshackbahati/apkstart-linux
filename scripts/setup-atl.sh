@@ -83,7 +83,9 @@ fi
 say "Installing ATL into the portable prefix"
 (
   cd android_translation_layer
-  export PATH="$ATL_ROOT/bin:$PATH"
+  # ATL's generated sources target Java 8; newer JDKs reject them.
+  export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}"
+  export PATH="$JAVA_HOME/bin:$ATL_ROOT/bin:$PATH"
   export PKG_CONFIG_PATH="$ATL_ROOT/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
   export LD_LIBRARY_PATH="$ATL_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   export LIBRARY_PATH="$ATL_ROOT/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"

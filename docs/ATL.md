@@ -33,6 +33,12 @@ apkstart app-name
 
 The backend passes the cached APK path to ATL and translates the launch activity into ATL's slash-separated form. Application data is maintained by ATL under its own data directory.
 
+## Build status on this host
+
+`bionic_translation`, wolfSSL with JNI and `art_standalone` build successfully into the portable prefix. The final ATL Java compilation currently fails on generated `com/android/internal/R.java`, where `javac` reports an unclosed comment. This is an upstream generated-source issue rather than a packaging failure; the script installs the dependencies and leaves the sources and prefix in place so the build can be resumed once upstream fixes the generator.
+
+The Java toolchain is pinned to JDK 17. JDK 27 rejects the Java 8 target and cannot run the upcall generator; JDK 11 cannot compile the generator; JDK 21 fails while resolving its vendored dependencies. JDK 17 is the only version that reaches the generated-source failure.
+
 ## Limitations
 
 - Most Android framework classes are not implemented; unimplemented APIs cause failures and need per-app stubs upstream.
