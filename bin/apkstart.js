@@ -164,15 +164,16 @@ function globalInstall() {
 async function controls(action) {
   const { GameControls } = require(path.join(ROOT, 'src/core/gamecontrols'));
   const c = new GameControls();
+  const target = process.argv[process.argv.indexOf('--controls') + 2];
   if (action === 'on') {
-    if (argv[2]) store.upsertApp({ package: argv[2], touchControls: true });
+    if (target) store.upsertApp({ package: target, touchControls: true });
     const r = await c.enable();
     process.stdout.write(r.ok ? 'Game controls on\n' : `Could not enable controls: ${r.error}\n`);
     if (!r.ok) process.exitCode = 1;
     return;
   }
   if (action === 'off') {
-    if (argv[2]) store.upsertApp({ package: argv[2], touchControls: false });
+    if (target) store.upsertApp({ package: target, touchControls: false });
     await c.disable();
     process.stdout.write('Game controls off\n');
     return;

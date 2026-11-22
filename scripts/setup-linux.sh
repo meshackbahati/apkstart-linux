@@ -63,7 +63,7 @@ if command -v key2touch >/dev/null 2>&1; then
   # Narrow passwordless rules: only these exact commands may run without a
   # prompt, so ApkStart can wake an idle container and manage game controls.
   printf '%s ALL=(root) NOPASSWD: /usr/bin/lxc-unfreeze -P /var/lib/waydroid/lxc -n waydroid\n' "$USER_NAME" > /tmp/opencode/apkstart-unfreeze.rules
-  printf '%s ALL=(:input) NOPASSWD: /usr/bin/key2touch\n' "$USER_NAME" > /tmp/opencode/apkstart-key2touch.rules
+  printf '%s ALL=(:input) SETENV: NOPASSWD: /usr/bin/key2touch\n' "$USER_NAME" > /tmp/opencode/apkstart-key2touch.rules
   runroot cp /tmp/opencode/apkstart-unfreeze.rules /etc/sudoers.d/apkstart-waydroid
   runroot cp /tmp/opencode/apkstart-key2touch.rules /etc/sudoers.d/apkstart-key2touch
   runroot chmod 440 /etc/sudoers.d/apkstart-waydroid /etc/sudoers.d/apkstart-key2touch
@@ -79,6 +79,10 @@ if command -v key2touch >/dev/null 2>&1; then
     K2T point add tap enter 80% 53% -p universal >/dev/null 2>&1 || true
     K2T point add tap lmb 70% 88% -p universal >/dev/null 2>&1 || true
   fi
+  K2T set only-focused true -p universal >/dev/null 2>&1 || true
+  K2T window add 'waydroid.*' -p universal >/dev/null 2>&1 || true
+  # key2touch ships Chinese messages; keep the installed package English.
+  runroot python3 "$ROOT/scripts/translate-key2touch.py" >/dev/null 2>&1 || true
   K2T check -p universal --json 2>/dev/null | head -12
   printf 'Game controls are off by default. ApkStart enables them only while a game runs; press F2 in a game to edit the layout.\n'
 fi

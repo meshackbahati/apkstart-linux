@@ -21,14 +21,33 @@ class GameControls {
         stderr: String((r.stderr && r.stderr.toString()) || ''),
       };
     });
-    this.spawner = spawner || ((cmd, args) => spawn('sudo', ['-n', '-g', 'input', '-u', user || process.env.USER || process.env.USERNAME || 'root', cmd, ...args], {
-      detached: true, stdio: 'ignore', env: env || process.env,
-    }));
+    this.spawner = spawner || ((cmd, args) => {
+      const user = process.env.USER || process.env.USERNAME || 'root';
+      const keep = ['DBUS_SESSION_BUS_ADDRESS', 'XDG_RUNTIME_DIR', 'WAYLAND_DISPLAY', 'DISPLAY'];
+      const prefixes = keep.filter((k) => (env || process.env)[k]).map((k) => `${k}=${(env || process.env)[k]}`);
+      return spawn('sudo', ['-n', '-g', 'input', '-u', user, ...prefixes, cmd, ...args], {
+        detached: true, stdio: 'ignore', env: env || process.env,
+      });
+    });
     this.profile = 'universal';
     this._enabled = false;
   }
 
-  _call(args) { return this.run('key2touch', args); }
+  _prefixes() {
+    const keep = ['DBUS_SESSION_BUS_ADDRESS', 'XDG_RUNTIME_DIR', 'WAYLAND_DISPLAY', 'DISPLAY'];
+    return keep.filter((k) => process.env[k]).map((k) => `${k}=${process.env[k]}`);
+  }
+
+  _call(args) {
+    const r = spawnSync('sudo', ['-n', '-g', 'input', '-u', process.env.USER || process.env.USERNAME || 'root', ...this._prefixes(), 'key2touch', ...args], {
+      encoding: 'utf8', timeout: 10000,
+    });
+    return {
+      ok: !r.error && r.status === 0,
+      stdout: String((r.stdout && r.stdout.toString()) || ''),
+      stderr: String((r.stderr && r.stderr.toString()) || ''),
+    };
+  }
 
   async available() {
     const r = this._call(['status', '--json']);
@@ -59,6 +78,10 @@ class GameControls {
     if (profile) this.profile = profile;
     if (!await this._ensureDaemon()) return { ok: false, error: 'key2touch daemon did not start' };
     this._call(['profile', 'use', this.profile]);
+    // Restrict capture to Waydroid windows so ordinary Linux applications keep
+    // the keyboard and mouse, even when key2touch is enabled by default.
+    this._call(['set', 'only-focused', 'true', '-p', this.profile]);
+    this._call(['window', 'add', 'waydroid.*', '-p', this.profile]);
     // Show the on-screen HUD so the controller is visibly present during a game.
     this._call(['show']);
     const r = this._call(['on']);
