@@ -26,6 +26,19 @@ esac
 mkdir -p "$SRC" "$ATL_ROOT"
 cd "$SRC" || exit 1
 
+if [ ! -d wolfssl ]; then
+  say "Fetching wolfSSL with JNI support"
+  run git clone --depth 1 --branch v5.8.2-stable https://github.com/wolfSSL/wolfssl.git
+fi
+say "Installing wolfSSL into the portable prefix"
+(cd wolfssl && run autoreconf -i \
+  && run ./configure --prefix="$ATL_ROOT" --enable-shared --disable-opensslall \
+     --disable-opensslextra --enable-aescbc-length-checks --enable-curve25519 \
+     --enable-ed25519 --enable-ed25519-stream --enable-oldtls --enable-base64encode \
+     --enable-tlsx --enable-scrypt --disable-examples --enable-crl --enable-jni \
+     --enable-sessioncerts \
+  && run make -j"$(nproc)" && run make install) || exit 1
+
 if [ ! -d bionic_translation ]; then
   say "Fetching bionic_translation"
   run git clone https://gitlab.com/android_translation_layer/bionic_translation.git
@@ -39,7 +52,8 @@ if [ ! -d art_standalone ]; then
   run git clone https://gitlab.com/android_translation_layer/art_standalone.git
 fi
 say "Installing art_standalone into the portable prefix"
-(cd art_standalone && run make ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
+(cd art_standalone && run make -j"$(nproc)" ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
+   CFLAGS="-I$ATL_ROOT/include" LDFLAGS="-L$ATL_ROOT/lib -Wl,-rpath,$ATL_ROOT/lib" \
   && run make ____LIBDIR=lib ____PREFIX="$ATL_ROOT" install) || exit 1
 
 if [ ! -d android_translation_layer ]; then
