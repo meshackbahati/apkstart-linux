@@ -787,6 +787,7 @@ async function refreshAndroid() {
   $('setAndroidWifi').checked = !!r.wifi;
   $('setAndroidAirplane').checked = !!r.airplane;
   $('setAndroidAnim').checked = !r.animationsOff;
+  if ($('setAndroidSoftKeyboard')) $('setAndroidSoftKeyboard').checked = !!r.softKeyboard;
   $('setAndroidVolume').value = r.volume;
   $('androidVolumeText').textContent = `${r.volume}%`;
   if (r.fontScale) $('setAndroidFont').value = Number(r.fontScale).toFixed(2);
@@ -808,6 +809,10 @@ function bindAndroid() {
   $('setAndroidWifi').addEventListener('change', (e) => set('wifi', e.target.checked, e.target.checked ? 'Wi-Fi 已开启' : 'Wi-Fi 已关闭'));
   $('setAndroidAirplane').addEventListener('change', (e) => set('airplane', e.target.checked, e.target.checked ? '已进入飞行模式' : '已退出飞行模式'));
   $('setAndroidAnim').addEventListener('change', (e) => set('animations', e.target.checked, e.target.checked ? '系统动画已开启' : '系统动画已关闭，界面更快'));
+  if ($('setAndroidSoftKeyboard')) {
+    $('setAndroidSoftKeyboard').addEventListener('change', (e) => set('softKeyboard', e.target.checked,
+      e.target.checked ? '安卓软键盘已开启，点输入框会弹出' : '安卓软键盘已关闭，直接用电脑键盘输入'));
+  }
   $('setAndroidFont').addEventListener('change', (e) => set('fontScale', Number(e.target.value), '字体大小已调整'));
   $('setAndroidDensity').addEventListener('change', (e) => set('density', Number(e.target.value), '显示大小已调整'));
   $('setAndroidVolume').addEventListener('input', (e) => {

@@ -52,6 +52,30 @@ Requirements are an x86_64 Linux desktop session, an accessible `/dev/kvm`, and 
 
 The automatic guest budget on Linux is 2 GB of RAM and 2 vCPUs. Prewarming keeps the runtime ready while applications are in use, and idle shutdown returns the memory after five minutes. The default panel is a 1280×720 landscape window rather than a phone-shaped portrait window. Manual values in the settings always take precedence. The background download and boot path were verified on a KVM-capable host; see [docs/LINUX.md](docs/LINUX.md) for details and known limitations.
 
+### Command line and one-time setup
+
+ApkStart installs as a global command. The installer registers `.apk`, writes the desktop entry and initialises the selected backend:
+
+```
+npm install -g .          # or: bash scripts/install.sh
+apkstart init --backend waydroid
+apkstart init --check
+```
+
+Daily use does not require the graphical window:
+
+```
+apkstart --install ~/Downloads/app.apk
+apkstart --list
+apkstart <app-name-or-package>
+apkstart --stop <app-name>
+apkstart --stop-runtime
+```
+
+Three backends are available: `builtin` (self-contained QEMU), `waydroid` (broad compatibility in a shared-kernel container, approximately 0.9 GB resident) and `atl` (experimental native Linux processes for compatible APKs). Select one with `apkstart --backend <id>`. Each backend owns a setup module under `src/core/setup.js`, so `apkstart init` installs only what the chosen backend needs. See [docs/CLI.md](docs/CLI.md) for the full command reference.
+
+Waydroid games that need touch input use `key2touch`, which maps the keyboard and mouse to a virtual touchscreen. Mapping is enabled only while a game launched by ApkStart is running and is released when it exits; press F2 inside a game to edit the layout.
+
 ## 下载即用（不想编译）
 
 两个源内容一致，国内建议用 Gitee：

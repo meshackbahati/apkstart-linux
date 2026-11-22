@@ -393,7 +393,7 @@ class Installer {
       args,
       iconIcoPath: ico,
       iconPngPath: png,
-      description: `${app.label} — 由 ApkStart 运行`,
+      description: String(app.label || 'Android App'),
       cwd: this.ctx.cwd,
       // 每个应用一个 AUMID：任务栏上按应用分组，不会全挤到 ApkStart 里
       appUserModelId: `RoutineMiku.ApkStart.${app.package}`.slice(0, 128),
@@ -553,7 +553,7 @@ class Installer {
     const backend = this.runtime && this.runtime.backend;
     const start = () => {
       // Waydroid creates an ordinary desktop window per application.
-      if (backend && backend.id === 'waydroid' && typeof backend.launchApp === 'function') {
+      if (backend && (backend.id === 'waydroid' || backend.id === 'atl') && typeof backend.launchApp === 'function') {
         return backend.launchApp(app ? app.package : pkg);
       }
       return rt.client.startApp(app ? app.package : pkg, app ? app.activity : null, {

@@ -55,9 +55,9 @@ The following was observed on an x86_64 host with accessible `/dev/kvm`, using a
 
 ## Waydroid backend (experimental)
 
-For true per-application desktop windows and persistent application state, the Linux build can use Waydroid instead of QEMU. Waydroid runs Android in a shared-kernel LXC container, so each application is a normal Wayland or X11 window and `/data` survives restarts.
+For persistent application state and a lower memory footprint, the Linux build can use Waydroid instead of QEMU. Waydroid runs Android in a shared-kernel LXC container rather than a virtual machine, so there is no emulated CPU and no fixed 2 GB guest allocation. On the development host the container cgroup used about 620 MB of anonymous memory, 110 MB of kernel memory and 155 MB of shared graphics memory, approximately 0.9 GB active, while the QEMU profile reserves 2 GB. Application data in `/data` survives container restarts.
 
-Prerequisites: a Wayland session, `/dev/binder` and `/dev/ashmem`, a render node under `/dev/dri`, and a Waydroid installation with its container image initialised. NVIDIA proprietary drivers are not supported by Waydroid.
+Prerequisites: a Wayland session, binder devices, a render node under `/dev/dri`, and a Waydroid installation with its container image initialised. Recent Arch kernels provide binder through `rust_binder`; Waydroid allocates `anbox-binder` itself and no manual `/dev/binder` symlinks should be created. NVIDIA proprietary drivers are not supported by Waydroid.
 
 The backend is opt-in. Add the following to the settings file (`$XDG_DATA_HOME/apkstart/settings.json`, or `~/.local/share/apkstart/settings.json` by default):
 
@@ -67,7 +67,44 @@ The backend is opt-in. Add the following to the settings file (`$XDG_DATA_HOME/a
 }
 ```
 
-ApkStart then connects to Waydroid's adb bridge at `127.0.0.1:16384` using the bundled adb, and launches applications through `waydroid app launch`, which creates their native windows. The default remains the self-contained QEMU runtime; no external runtime is ever selected automatically.
+ApkStart then connects to Waydroid's adb bridge using the bundled adb on its isolated server port, and launches applications through `waydroid app launch`. The default remains the self-contained QEMU runtime; no external runtime is ever selected automatically.
+
+A one-time adb authorization is required on a fresh container. Copy the host public key into the guest and restart adbd:
+
+```
+sudo lxc-attach -P /var/lib/waydroid/lxc -n waydroid -- sh -c \
+  'mkdir -p /data/misc/adb; cat > /data/misc/adb/adb_keys; chmod 600 /data/misc/adb/adb_keys; \
+   chown shell:shell /data/misc/adb/adb_keys; kill -9 $(pidof adbd); setprop ctl.start adbd' \
+  < ~/.android/adbkey.pub
+```
+
+The container must be unfrozen before `lxc-attach` will connect; `sudo lxc-unfreeze -P /var/lib/waydroid/lxc -n waydroid` resolves that.
+
+### On-screen keyboard
+
+Desktop users type on the host keyboard, so ApkStart keeps Android's on-screen keyboard hidden by default by writing `show_ime_with_hard_keyboard=0` to the guest secure settings after each start. The settings page contains an "On-screen keyboard" switch which writes the same setting when a touch keyboard is wanted. The preference is stored in `input.virtualKeyboard`.
+
+### Window management limitation
+
+Waydroid 1.6.3 runs all multi-window applications on one shared Android display. Each application receives its own top-level window, but the Android window manager draws the application inside a freeform rectangle on that display. Consequently the window close button and Alt+F4 are ignored, resizing the top-level window resizes the shared display rather than the application, and Android draws its own title bar. This is an upstream limitation documented in [waydroid issue #2470](https://github.com/waydroid/waydroid/issues/2470); the proposed fix, [android_hardware_waydroid PR #93](https://github.com/waydroid/android_hardware_waydroid/pull/93), does not change multi-window mode. ApkStart cannot correct this from outside the container. Applications can still be stopped reliably from the application list, which issues `am force-stop` and closes their window.
+
+## Installation and first-run setup
+
+Install the command globally and initialise the backend once:
+
+```
+npm install -g .
+apkstart init --backend waydroid
+apkstart init --check
+```
+
+`apkstart init` runs the setup module registered for the selected backend in `src/core/setup.js`. It never installs dependencies for a backend the user did not choose. The Waydroid module prepares the container, authorises the bundled adb key and configures keyboard-to-touch controls.
+
+### Game controls
+
+Touch-only games use `key2touch`, which reads host keyboard and mouse events and injects a virtual touchscreen into Waydroid. The `universal` profile binds a WASD joystick, Space, Enter and the left mouse button. Key capture is per application and off by default, so ordinary applications keep the normal keyboard. Enable it for a game with `apkstart --controls on <package>`; subsequent launches of that game enable it automatically. A detached watcher and the runtime watchdog release the mapping when the game exits, `apkstart --controls off` releases it immediately, and `apkstart --controls status` reports the current state. Press F2 inside a game to edit the control layout.
+
+The on-screen keyboard switch described above is independent of game controls.
 
 ## Known limitations
 

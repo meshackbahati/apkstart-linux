@@ -20,13 +20,15 @@
 const { Backend, CAPS } = require('./base');
 const { BuiltinBackend } = require('./builtin');
 const { WaydroidBackend } = require('./waydroid');
+const { AtlBackend } = require('./atl');
 
-// builtin remains the default. Waydroid is opt-in on Linux because it runs
-// applications as native windows and keeps their state across restarts, but
-// it needs a working Waydroid installation and a Wayland session.
+// builtin remains the default. Waydroid offers broad compatibility in a
+// container; ATL runs compatible APKs as native Linux processes with far less
+// memory. Neither is selected automatically.
 const REGISTRY = [
   BuiltinBackend,
   WaydroidBackend,
+  AtlBackend,
 ];
 
 /** 唯一底座。保留这个常量，是给「以后真要加底座」的地方留个明确落点。 */

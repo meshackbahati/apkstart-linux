@@ -232,17 +232,72 @@
     '大小': 'Size',
     '路径': 'Path',
     '包名': 'Package name',
+    // On-screen keyboard control
+    '安卓软键盘': 'On-screen keyboard',
+    '默认关闭：直接用电脑键盘输入。需要屏幕键盘时再打开。':
+      'Off by default: type with the computer keyboard. Turn on for a touch keyboard.',
+    '安卓软键盘已开启，点输入框会弹出': 'On-screen keyboard on; it appears when you tap an input field',
+    '安卓软键盘已关闭，直接用电脑键盘输入': 'On-screen keyboard off; type with the computer keyboard',
+    // Glossary used when a whole sentence has no exact translation.
+    '自动检测': 'Auto-check', '自动': 'automatic', '运行': 'run', '运行时': 'runtime',
+    '失败': 'failed', '启动': 'start', '安装': 'install', '打开': 'open', '镜像': 'image',
+    '安卓': 'Android', '窗口': 'window', '系统': 'system', '数据': 'data', '目录': 'folder',
+    '问题': 'issue', '更新': 'update', '文件': 'file', '重启': 'restart', '正在': '',
+    '检测': 'check', '下载': 'download', '诊断': 'diagnostics', '没有': 'no', '加速': 'acceleration',
+    '版本': 'version', '修复': 'fix', '模拟': 'emulat', '兼容': 'compatibility', '关闭': 'off',
+    '桌面': 'desktop', '需要': 'requires', '图标': 'icon', '直接': 'directly', '完成': 'done',
+    '提示': 'notice', '显示': 'show', '生效': 'takes effect', '虚拟': 'virtual', '当前': 'current',
+    '会自动': 'automatically', '模拟器': 'emulator', '重试': 'retry', '系统镜像': 'system image',
+    '软件': 'software', '方式': 'mode', '面板': 'panel', '方向': 'orientation', '内存': 'memory',
+    '模式': 'mode', '报告': 'report', '按钮': 'button', '驱动': 'driver', '用户': 'user',
+    '下次': 'next', '快捷方式': 'shortcut', '硬件': 'hardware', '程序': 'program', '声音': 'sound',
+    '硬件加速': 'hardware acceleration', '教程': 'guide', '网络': 'network', '旋转': 'rotation',
+    '双击': 'double-click', '检查': 'check', '状态': 'status', '虚拟机': 'virtual machine',
+    '本机': 'this machine', '手动': 'manual', '卸载': 'uninstall', '切换': 'switch', '使用': 'use',
+    '安卓数据': 'Android data', '重置': 'reset', '默认': 'default', '诊断报告': 'diagnostic report',
+    '首次': 'first', '横屏': 'landscape', '竖屏': 'portrait', '确认': 'confirm', '商店': 'store',
+    '启用': 'enable', '磁盘': 'disk', '保留': 'keep', '关掉': 'turn off', '处理': 'handle',
+    '体检': 'health check', '分类': 'category', '一键': 'one-click', '分区': 'partition',
+    '已装': 'installed', '日志': 'logs', '重建': 'rebuild', '影响': 'affect', '后台': 'background',
+    '内置': 'built-in', '手册': 'manual', '开始': 'start', '清理': 'clean', '支持': 'support',
+    '如果': 'if', '或者': 'or', '并且': 'and', '但是': 'but', '因为': 'because', '所以': 'so',
+    '可以': 'can', '不能': 'cannot', '不会': 'will not', '没有': 'no', '这个': 'this', '那个': 'that',
+    '点击': 'click', '选择': 'select', '输入': 'input', '输出': 'output', '连接': 'connect',
+    '服务': 'service', '端口': 'port', '加速': 'acceleration', '安装完成': 'installation complete',
+    '等待': 'waiting', '准备': 'prepare', '进度': 'progress', '失败原因': 'failure reason',
+    '未知': 'unknown', '禁用': 'disable', '允许': 'allow', '拒绝': 'deny', '高级': 'advanced',
+    '搜索': 'search', '清除': 'clear', '保存': 'save', '取消': 'cancel', '确定': 'OK',
+    '重试': 'retry', '跳过': 'skip', '继续': 'continue', '暂停': 'pause', '完成': 'complete',
+    '时间': 'time', '大小': 'size', '速度': 'speed', '剩余': 'remaining', '路径': 'path',
+    '桌面图标': 'desktop shortcut', '开始菜单': 'Start menu', '快捷': 'shortcut',
+    '性能': 'performance', '资源': 'resources', '占用': 'usage', '优化': 'optimise',
+    '省电': 'power saving', '优先级': 'priority', '核心': 'cores', '显卡': 'GPU',
+    '画质': 'quality', '分辨率': 'resolution', '密度': 'density', '键盘': 'keyboard',
+    '鼠标': 'mouse', '手柄': 'gamepad', '触控': 'touch', '按键': 'key', '映射': 'mapping',
+    '预设': 'preset', '自定义': 'custom', '模板': 'template', '应用卡片': 'app card',
+    '右键': 'right-click', '左键': 'left-click', '滚轮': 'scroll wheel', '侧键': 'side button',
+    '滑动': 'swipe', '拖动': 'drag', '返回': 'back', '全屏': 'fullscreen', '窗口模式': 'window mode',
+    '铺满': 'fill', '比例': 'aspect ratio', '黑边': 'letterboxing', '自动旋转': 'auto-rotate',
+    '语言': 'language', '地区': 'region', '日期': 'date', '时间': 'time', '音量': 'volume',
+    '字体': 'font', '动画': 'animations', '后台进程': 'background processes', '白名单': 'whitelist',
+    '共享': 'shared', '文件夹': 'folder', '权限': 'permissions', '授权': 'grant',
+    '卸载': 'uninstall', '清除数据': 'clear data', '数据互通': 'file sharing',
+    '发行版': 'release', '通道': 'channel', '源': 'source', '镜像站': 'mirror', '代理': 'proxy',
+    '日志': 'logs', '导出': 'export', '导入': 'import', '反馈': 'feedback', '关于': 'about',
+    '许可': 'license', '作者': 'author', '官网': 'website', '发布页': 'release page',
   };
 
   const done = new WeakSet();
   const attrs = ['title', 'placeholder', 'aria-label', 'alt'];
+  // Longest keys first, otherwise a short term can break a longer phrase.
+  const TERMS = Object.entries(DICT).sort((a, b) => b[0].length - a[0].length);
 
   function translateText(value) {
     const s = String(value || '');
     if (!/[\u4e00-\u9fff]/.test(s)) return s;
     if (DICT[s]) return DICT[s];
     let out = s;
-    for (const [zh, en] of Object.entries(DICT)) {
+    for (const [zh, en] of TERMS) {
       if (out.includes(zh)) out = out.split(zh).join(en);
     }
     return out;

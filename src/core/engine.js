@@ -134,6 +134,7 @@ class Runtime {
 
   client(serial) {
     const backend = this._backend;
+    if (!serial && backend && backend.id === 'atl' && typeof backend.client === 'function') return backend.client();
     const defaultSerial = backend && backend.id === 'waydroid' ? backend.serial : this.emuSerial;
     const useSerial = serial || defaultSerial;
     const adbPath = this.adbPath();
@@ -728,6 +729,12 @@ class Runtime {
 
   /** 优雅停止：emulator 走控制台关机，QEMU 走 monitor */
   async stop({ graceful = true } = {}) {
+    // A stopped runtime invalidates any cached view of guest networking.
+    this._lastNetwork = null;
+    if (this._backend && this._backend.id === 'atl') {
+      const r = await this._backend.stop().catch((e) => ({ ok: false, error: e.message }));
+      return !!(r && r.ok);
+    }
     if (this._backend && this._backend.id === 'waydroid') {
       const r = await this._backend.stop({ graceful }).catch((e) => ({ ok: false, error: e.message }));
       return !!(r && r.ok);
@@ -998,10 +1005,20 @@ class Runtime {
   }
 
   async _ensureInner({ onLog = () => {} } = {}) {
+    if (this.backend.id === 'atl') {
+      const r = await this.backend.ensure({ onLog });
+      if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'ATL unavailable', needsSetup: 'atl' };
+      return { ok: true, client: this.backend.client(), reused: true, backend: 'atl', engine: 'atl' };
+    }
     if (this.backend.id === 'waydroid') {
       const r = await this.backend.ensure({ onLog });
       if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'Waydroid backend unavailable', needsSetup: 'backend' };
-      return { ok: true, client: this.client(), reused: true, backend: 'waydroid', engine: 'waydroid' };
+      const client = this.client();
+      // Desktop users type on the host keyboard, so keep Android's soft
+      // keyboard hidden unless the user explicitly asked for it.
+      const soft = !!(this.settings.input && this.settings.input.virtualKeyboard);
+      await client.shell(`settings put secure show_ime_with_hard_keyboard ${soft ? 1 : 0}`).catch(() => {});
+      return { ok: true, client, reused: true, backend: 'waydroid', engine: 'waydroid' };
     }
     const client = this.client();
     if (await client.isOnline()) {
@@ -1302,6 +1319,9 @@ class Runtime {
       if (this._activeApps.size > 0 || Date.now() - this.lastActivity < limit) return;
       try {
         const running = await this.client().runningPackages();
+        if (this._backend && typeof this._backend.syncControls === 'function') {
+          await this._backend.syncControls(running).catch(() => {});
+        }
         const alive = running.filter((p) => !/launcher|systemui|settings|inputmethod|android\.systemui/i.test(p));
         if (alive.length === 0) await this.stop();
         else this.lastActivity = Date.now();

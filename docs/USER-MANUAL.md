@@ -29,6 +29,14 @@
 
 ---
 
+## 0. English interface and command line
+
+The interface is translated to English by `src/ui/i18n.js`. Exact translations cover common phrases and a glossary translates the remaining composite strings term by term.
+
+ApkStart can be installed as a global command (`npm install -g .` or `bash scripts/install.sh`). The essential commands are `apkstart --install <file.apk>`, `apkstart <app-name>`, `apkstart --list`, `apkstart --stop <app>` and `apkstart init --check`. See [CLI.md](CLI.md) for the full reference.
+
+For touch-only games, the keyboard-to-touch mapper is enabled only while the game runs and is released when it stops. Use `apkstart --controls off` at any time to free the keyboard, and press F2 inside a game to edit the control layout.
+
 ## 1. 30 秒看懂 ApkStart
 
 ```

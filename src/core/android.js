@@ -63,6 +63,7 @@ class AndroidSettings {
       'echo "font=$(settings get system font_scale)"',
       'echo "density=$(wm density | tail -n1 | tr -dc \'0-9\')"',
       'echo "animw=$(settings get global window_animation_scale)"',
+      'echo "softkb=$(settings get secure show_ime_with_hard_keyboard)"',
       'echo "sdk=$(getprop ro.build.version.sdk)"',
       `echo "vol=$(${volumeCmd('--get')} 2>/dev/null | grep -m1 'volume is')"`,
     ]);
@@ -78,6 +79,9 @@ class AndroidSettings {
       density: Number(get('density')) || 0,
       volume: volumePercent(parseVolume(get('vol'))),
       animationsOff: anim === '0.0' || anim === '0',
+      // Whether Android shows its on-screen keyboard even when a hardware
+      // keyboard is attached. Off means laptop keys are the only input method.
+      softKeyboard: get('softkb') === '1',
       sdk: Number(get('sdk')) || 0,
     };
   }
@@ -119,6 +123,19 @@ class AndroidSettings {
       `settings put global animator_duration_scale ${v}`,
     ]);
     return { ok: true, animationsOff: !on };
+  }
+
+  /**
+   * On-screen keyboard policy.
+   *
+   * Android keeps a secure setting that decides whether the soft keyboard is
+   * shown while a hardware keyboard is present. Desktop users type on the
+   * laptop, so the default is off; touch-only users can turn it back on from
+   * the settings page or the tray.
+   */
+  async setSoftKeyboard(on) {
+    await this._sh([`settings put secure show_ime_with_hard_keyboard ${on ? 1 : 0}`]);
+    return { ok: true, softKeyboard: !!on };
   }
 
   async setFontScale(scale) {

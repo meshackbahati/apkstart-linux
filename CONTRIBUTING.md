@@ -20,6 +20,10 @@ npm test          # 纯 Node 单元测试 + 引擎链路测试（不需要网络
 electron . --smoke test\shot.png
 ```
 
+## 安装与初始化
+
+Linux 上先用 `npm install -g .` 安装全局命令，再用 `apkstart init --backend waydroid` 准备所选后端。`apkstart init --check` 可以只报告依赖状态而不修改系统。新增后端时，需要同时在 `src/core/backends/index.js` 注册后端、在 `src/core/setup.js` 增加初始化模块，并提供对应的 `scripts/setup-*.sh`。
+
 ## 代码约定
 
 - **壳层不引入第三方运行时依赖**。`src/core/` 下的 ZIP / AXML / ARSC / PNG / ICO 解析都是手写的，

@@ -28,7 +28,8 @@ function makeBackend(overrides = {}) {
     const key = Object.keys(replies).find((k) => [cmd, ...args].join(' ').includes(k));
     return key ? replies[key] : { ok: true, stdout: '', stderr: '' };
   };
-  return { backend: new WaydroidBackend('/app', { run, adbPath: '/usr/bin/adb' }), calls };
+  const gameControls = { enable: async () => ({ ok: true }), disable: async () => ({ ok: true }) };
+  return { backend: new WaydroidBackend('/app', { run, adbPath: '/usr/bin/adb', gameControls }), calls };
 }
 
 (async () => {
@@ -61,12 +62,30 @@ function makeBackend(overrides = {}) {
     assert.equal(backend.running(), true);
   });
 
-  await test('stop leaves a pre-existing session untouched', async () => {
-    const { backend } = makeBackend();
+  await test('ensure connects to the container IP reported by waydroid status', async () => {
+    const { backend, calls } = makeBackend({
+      replies: {
+        'waydroid status': { ok: true, stdout: 'Session:\tRUNNING\nIP address:\t192.168.240.112\n', stderr: '' },
+      },
+    });
+    const r = await backend.ensure();
+    assert.equal(r.ok, true);
+    assert.ok(calls.some((c) => c.includes('adb connect 192.168.240.112:5555')));
+  });
+
+  await test('stop releases the container even when the user started the session', async () => {
+    const { backend, calls } = makeBackend();
     await backend.ensure();
     const r = await backend.stop();
     assert.equal(r.ok, true);
-    assert.ok(/left the user/.test(r.note));
+    assert.ok(calls.includes('waydroid session stop'));
+    assert.equal(backend.running(), false);
+  });
+
+  await test('stop before start is a no-op', async () => {
+    const { backend, calls } = makeBackend();
+    await backend.stop();
+    assert.ok(!calls.includes('waydroid session stop'));
   });
 
   await test('stop shuts down a session we started', async () => {

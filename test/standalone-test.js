@@ -52,9 +52,9 @@ function touch(dir, rel, bytes = 8) {
     assert.equal(settings.engine.mode, 'builtin', `默认 mode=${settings.engine.mode}`);
   });
 
-  test('默认底座是 builtin；Linux 上另外提供 opt-in 的 Waydroid', () => {
-    assert.equal(backends.REGISTRY.length, 2, `注册表有 ${backends.REGISTRY.length} 个底座`);
-    assert.deepEqual(backends.describe().map((d) => d.id), ['builtin', 'waydroid']);
+  test('默认底座是 builtin；Linux 上另外提供 opt-in 的 Waydroid 与 ATL', () => {
+    assert.equal(backends.REGISTRY.length, 3, `注册表有 ${backends.REGISTRY.length} 个底座`);
+    assert.deepEqual(backends.describe().map((d) => d.id), ['builtin', 'waydroid', 'atl']);
   });
 
   test('任何残留的 mode 都只会创建 builtin（mumu / fydeos / attach / 乱填）', () => {
@@ -86,7 +86,7 @@ function touch(dir, rel, bytes = 8) {
 
   test('backends/ 下没有第三方模拟器模块', () => {
     const files = fs.readdirSync(path.join(ROOT, 'src', 'core', 'backends')).sort();
-    assert.deepEqual(files, ['base.js', 'builtin.js', 'index.js', 'waydroid.js'], `实际：${files.join(', ')}`);
+    assert.deepEqual(files, ['atl.js', 'base.js', 'builtin.js', 'index.js', 'waydroid.js'], `实际：${files.join(', ')}`);
   });
 
   test('mumu / fydeos / mumu-compat / frame 模块都不在了', () => {

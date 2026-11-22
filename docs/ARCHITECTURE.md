@@ -54,6 +54,14 @@ Explorer 双击 .apk
   增量双向同步（mtime+size 判定），8s 轮询 + 关键动作触发
 ```
 
+## 后端与初始化注册层
+
+`src/core/backends/index.js` 注册三个后端：`builtin`（自包含 QEMU）、`waydroid`（共享内核容器，兼容性广）与 `atl`（实验性原生进程）。上层只通过 `Backend` 接口与它们交互，因此新增后端不需要改引擎主流程。
+
+`src/core/setup.js` 为每个后端维护一个初始化模块。`apkstart init --backend <id>` 只运行所选后端的安装脚本，`apkstart init --check` 报告当前依赖状态。Waydroid 的初始化脚本同时配置 adb 授权、空闲解冻的窄权限 sudo 规则，以及键盘转触摸的游戏控制。
+
+游戏控制由 `src/core/gamecontrols.js` 封装。它在启动游戏时开启映射，在应用停止或退出时关闭，避免键盘捕获扩散到整个桌面。
+
 ## 为什么不用现成库
 
 | 需求 | 常规做法 | ApkStart 的做法 | 理由 |

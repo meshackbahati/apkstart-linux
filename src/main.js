@@ -1539,6 +1539,9 @@ async function stopApp(pkg, opts = {}) {
   const detached = displaySettings().windowEmbed === false;
   try {
     await runtime.endApp(target, { onIdle: (idle) => onContainerActive(idle) }).catch(() => {});
+    if (runtime.backend && typeof runtime.backend.stopApp === 'function') {
+      await runtime.backend.stopApp(target).catch(() => {});
+    }
     appLog(`stop ${target}`);
 
     if (!opts.keepWindow) {
@@ -2775,6 +2778,11 @@ function registerIpc() {
         case 'animations': return { ok: true, ...(await androidSet.setAnimations(!!value)) };
         case 'fontScale': return { ok: true, ...(await androidSet.setFontScale(value)) };
         case 'density': return { ok: true, ...(await androidSet.setDensity(value)) };
+        case 'softKeyboard': {
+          // Persist so the choice is reapplied after a runtime restart.
+          store.saveSettings({ input: { virtualKeyboard: !!value } });
+          return { ok: true, ...(await androidSet.setSoftKeyboard(!!value)) };
+        }
         default: return { ok: false, error: `未知设置项 ${key}` };
       }
     } catch (e) { return { ok: false, error: e.message }; }

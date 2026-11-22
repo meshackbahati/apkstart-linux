@@ -63,6 +63,14 @@ Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue           # 否则 bu
 ```powershell
 cd D:\apkstart-dsh\apkstart
 
+# 全局命令与后端初始化
+npm install -g .
+apkstart init --check
+apkstart init --backend waydroid
+apkstart --backend waydroid
+apkstart --install assets/moto-rush.apk
+apkstart --controls off
+
 # 单元/回归测试（纯 Node，不需要 Electron/adb/网络）
 npm test
 

@@ -174,6 +174,14 @@ const DEFAULT_SETTINGS = {
    * notify = 出现「新的严重问题」时弹系统通知（老问题不重复打扰）。
    */
   debug: { auto: true, intervalMin: 10, notify: true },
+  /**
+   * Input preferences shared by the desktop and the Android guest.
+   *
+   * virtualKeyboard = false means a laptop or desktop keyboard is assumed and
+   * Android's on-screen keyboard stays hidden while typing. Touch-only users
+   * can switch it on; the value is written to the guest secure settings.
+   */
+  input: { virtualKeyboard: false },
   display: {
     mode: 'window',          // window（竖屏窗口，可自由拉伸） | fullscreen（自动适配屏幕）
     portrait: '900x1600',    // 窗口模式的竖屏分辨率，可在设置里调大小
