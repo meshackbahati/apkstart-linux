@@ -20,6 +20,8 @@ This document describes the current Linux build (version 0.6.3) and its measured
 | Waydroid container | `waydroid` | about 0.9 GB active (620 MB anonymous, 110 MB kernel, 155 MB shared graphics) | Broad, games work | One top-level window per app on one shared Android display |
 | Android Translation Layer | `atl` | process-only | App by app, experimental | Native Linux process and window |
 
+The ATL backend is built as a portable module under `$XDG_DATA_HOME/apkstart/runtime/atl`. Its binaries, libraries and bionic configuration live in that prefix, and the backend sets `LD_LIBRARY_PATH` and `BIONIC_TRANSLATION_CONFIG` when launching an APK. It does not require a system-wide install and can be removed by deleting the prefix. The module is still developed upstream in C++ and Java; rewriting it in Rust would be a fork of a large codebase and would not change its runtime memory use.
+
 The default remains `builtin`; select another backend with `apkstart --backend <id>` and initialise it with `apkstart init --backend <id>`.
 
 ## Known limitations

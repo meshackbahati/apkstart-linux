@@ -43,6 +43,12 @@ function which(cmd) {
 }
 
 /** Non-destructive status report used by `apkstart init --check`. */
+function portableAtl() {
+  const base = process.env.XDG_DATA_HOME || path.join(require('os').homedir(), '.local', 'share');
+  const bin = path.join(base, 'apkstart', 'runtime', 'atl', 'bin', 'android-translation-layer');
+  return fs.existsSync(bin) ? bin : null;
+}
+
 function check() {
   // sudoers drop-ins are root-only; sudo -l reports the effective grants.
   const dir = spawnSync('sudo', ['-n', '-l'], { encoding: 'utf8' });
@@ -51,7 +57,7 @@ function check() {
     platform: process.platform,
     waydroid: which('waydroid') || null,
     key2touch: which('key2touch') || null,
-    atl: which('android-translation-layer') || null,
+    atl: which('android-translation-layer') || portableAtl(),
     sudoers: {
       unfreeze: names.includes('lxc-unfreeze'),
       key2touch: names.includes('/usr/bin/key2touch'),
@@ -73,4 +79,4 @@ function run(id, onLog = () => {}) {
   return { ok: !r.error && r.status === 0, error: r.error ? r.error.message : '' };
 }
 
-module.exports = { SETUPS, list, check, run };
+module.exports = { SETUPS, list, check, run, portableAtl };

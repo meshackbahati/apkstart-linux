@@ -61,7 +61,14 @@ class GameControls {
 
   async _ensureDaemon() {
     const s = await this.status();
-    if (s.running) return true;
+    if (s.running) {
+      // Keep the profile and scoping rules applied even when the daemon was
+      // started earlier by another process.
+      this._call(['profile', 'use', this.profile]);
+      this._call(['set', 'only-focused', 'true', '-p', this.profile]);
+      this._call(['window', 'add', 'waydroid.*', '-p', this.profile]);
+      return true;
+    }
     const child = this.spawner('key2touch', ['--hidden']);
     if (child && child.on) child.on('error', () => {});
     if (child && child.unref) child.unref();

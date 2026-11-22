@@ -90,6 +90,22 @@ function make(overrides = {}) {
     assert.deepEqual(backend.running(), []);
   });
 
+  await test('portable prefix is under ApkStart data and is used in the environment', async () => {
+    const { backend } = make();
+    const root = backend.portableRoot();
+    assert.ok(root.endsWith(path.join('apkstart', 'runtime', 'atl')), root);
+    const env = backend._env();
+    assert.ok(env.LD_LIBRARY_PATH.includes(path.join(root, 'lib')));
+  });
+
+  await test('client reports a launched app as alive for installer polling', async () => {
+    const { backend } = make();
+    await backend.ensure();
+    await backend.launchApp('org.fdroid.fdroid');
+    assert.equal((await backend.client().shell('pidof org.fdroid.fdroid')).trim(), '1');
+    assert.equal((await backend.client().shell('pidof other.package')).trim(), '');
+  });
+
   console.log('\n[Backend registry]');
 
   await test('ATL is registered alongside builtin and Waydroid', () => {

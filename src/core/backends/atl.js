@@ -41,7 +41,13 @@ class AtlClient {
     this.adbPath = '';
   }
 
-  async shell() { return ''; }
+  async shell(command) {
+    // Installer polls `pidof <pkg>` to decide whether a launched app is alive.
+    // ATL processes are tracked directly, so report a synthetic PID for them.
+    const m = /pidof\s+([A-Za-z][\w.]*)/.exec(String(command || ''));
+    if (m && this.backend.running().includes(m[1])) return '1';
+    return '';
+  }
   async isOnline() { return true; }
   async devices() { return [{ serial: 'atl', state: 'device' }]; }
   async resetDisplayOverrides() { /* no Android display to override */ }
@@ -80,6 +86,25 @@ class AtlBackend extends Backend {
   running() { return this._running; }
   client() { return this._client; }
 
+  /** Self-contained ATL prefix, owned by ApkStart rather than the system. */
+  portableRoot() {
+    const base = process.env.APPDATA
+      || process.env.XDG_DATA_HOME
+      || path.join(os.homedir(), '.local', 'share');
+    return path.join(base, 'apkstart', 'runtime', 'atl');
+  }
+
+  /** Environment for a portable ATL binary; harmless for a system install. */
+  _env() {
+    const root = this.portableRoot();
+    const env = { ...process.env };
+    env.LD_LIBRARY_PATH = [path.join(root, 'lib'), path.join(root, 'lib64'), env.LD_LIBRARY_PATH].filter(Boolean).join(':');
+    if (fs.existsSync(path.join(root, 'share', 'bionic_translation'))) {
+      env.BIONIC_TRANSLATION_CONFIG = path.join(root, 'share', 'bionic_translation', 'cfg.d', 'bionic_translation.cfg');
+    }
+    return env;
+  }
+
   async probe() {
     if (process.platform !== 'linux') return { ok: true, found: false, detail: 'ATL requires Linux' };
     if (this.binary && fs.existsSync(this.binary)) {
@@ -88,7 +113,9 @@ class AtlBackend extends Backend {
     const found = this.run('sh', ['-c', 'command -v android-translation-layer || true']);
     const bin = String(found.stdout || '').trim();
     if (bin) { this.binary = bin; return { ok: true, found: true, path: bin, detail: 'android-translation-layer on PATH' }; }
+    const portable = this.portableRoot();
     const candidates = [
+      path.join(portable, 'bin', 'android-translation-layer'),
       path.join(os.homedir(), '.local', 'bin', 'android-translation-layer'),
       '/usr/local/bin/android-translation-layer',
       path.join(this.appRoot || '', 'runtime', 'atl', 'bin', 'android-translation-layer'),
@@ -134,7 +161,7 @@ class AtlBackend extends Backend {
     let child;
     try {
       child = this.spawner(this.binary, args, {
-        stdio: 'ignore', detached: true, env: process.env,
+        stdio: 'ignore', detached: true, env: this._env(),
       });
     } catch (e) {
       return { ok: false, error: e.message };
