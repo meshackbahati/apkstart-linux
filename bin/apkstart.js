@@ -104,6 +104,7 @@ async function game(name) {
   const app = findApp(name);
   if (!app) throw new Error(`Application not installed: ${name}. Run "apkstart --list".`);
   store.upsertApp({ package: app.package, touchControls: true });
+  store.saveSettings({ input: { touchControls: true } });
   const { GameControls } = require(path.join(ROOT, 'src/core/gamecontrols'));
   const c = new GameControls();
   await c.enable().catch(() => {});

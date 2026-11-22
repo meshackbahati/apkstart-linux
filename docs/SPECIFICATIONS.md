@@ -33,7 +33,7 @@ The default remains `builtin`; select another backend with `apkstart --backend <
 
 ## Game controls
 
-The universal profile binds a WASD joystick, Space, Enter and the left mouse button. It is enabled by default when an application is launched, shown with an on-screen HUD, and released when the game process exits. `apkstart --game <app>` guarantees mapping is enabled; `apkstart --controls edit` opens the layout editor as a desktop application; `apkstart --controls off` releases capture. Layouts are edited with F2 inside a game or through the desktop editor.
+The universal profile binds a WASD joystick, Space, Enter and the left mouse button. It is **disabled by default** because keyboard-to-touch mappings are not reliable across games; in Moto Rush the mapped keys did not steer or accelerate the motorcycle. `apkstart --game <app>` is the explicit opt-in launcher and enables mapping for that game; `apkstart --controls edit` opens the layout editor as a desktop application; `apkstart --controls off` releases capture at any moment. Layouts are edited with F2 inside a game or through the desktop editor. Game controls should be considered experimental until a game-specific layout has been verified.
 
 ## Setup and verification
 

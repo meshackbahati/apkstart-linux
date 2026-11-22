@@ -199,8 +199,8 @@ class WaydroidBackend extends Backend {
     // Only applications explicitly marked as touch-controlled get key capture.
     const app = this.deps.store && this.deps.store.getApp ? this.deps.store.getApp(pkg) : null;
     const settings = this.deps.store && this.deps.store.getSettings ? this.deps.store.getSettings() : null;
-    const wanted = app ? app.touchControls !== false : true;
-    const globalWanted = !settings || !settings.input || settings.input.touchControls !== false;
+    const wanted = app ? app.touchControls === true : false;
+    const globalWanted = !!(settings && settings.input && settings.input.touchControls);
     if (wanted && globalWanted) {
       await this.controls.enable().catch(() => {});
     }

@@ -181,7 +181,9 @@ const DEFAULT_SETTINGS = {
    * Android's on-screen keyboard stays hidden while typing. Touch-only users
    * can switch it on; the value is written to the guest secure settings.
    */
-  input: { virtualKeyboard: false, touchControls: true },
+  // Game controls stay opt-in until keyboard-to-touch mappings are verified
+  // per game. An active mapper captures keys across the desktop.
+  input: { virtualKeyboard: false, touchControls: false },
   display: {
     mode: 'window',          // window（竖屏窗口，可自由拉伸） | fullscreen（自动适配屏幕）
     portrait: '900x1600',    // 窗口模式的竖屏分辨率，可在设置里调大小

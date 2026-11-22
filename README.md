@@ -76,7 +76,7 @@ apkstart --stop-runtime
 
 Three backends are available: `builtin` (self-contained QEMU), `waydroid` (broad compatibility in a shared-kernel container, approximately 0.9 GB resident) and `atl` (experimental native Linux processes for compatible APKs). Select one with `apkstart --backend <id>`. Each backend owns a setup module under `src/core/setup.js`, so `apkstart init` installs only what the chosen backend needs. See [docs/CLI.md](docs/CLI.md) for the full command reference and [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md) for measured memory, window behaviour and limitations.
 
-Waydroid games that need touch input use `key2touch`, which maps the keyboard and mouse to a virtual touchscreen. Mapping is enabled only while a game launched by ApkStart is running and is released when it exits; press F2 inside a game to edit the layout.
+Game controls via `key2touch` are experimental and disabled by default: the universal layout did not steer or accelerate Moto Rush, and an active mapper captures keys across the desktop. Use `apkstart --game <app>` only with a verified game-specific layout, and `apkstart --controls off` to release capture immediately. See [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md).
 
 ## 下载即用（不想编译）
 

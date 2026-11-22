@@ -102,7 +102,7 @@ apkstart init --check
 
 ### Game controls
 
-Touch-only games use `key2touch`, which reads host keyboard and mouse events and injects a virtual touchscreen into Waydroid. The `universal` profile binds a WASD joystick, Space, Enter and the left mouse button. Key capture is per application and off by default, so ordinary applications keep the normal keyboard. Enable it for a game with `apkstart --controls on <package>`; subsequent launches of that game enable it automatically. A detached watcher and the runtime watchdog release the mapping when the game exits, `apkstart --controls off` releases it immediately, and `apkstart --controls status` reports the current state. Press F2 inside a game to edit the control layout.
+Touch-only games use `key2touch`, which reads host keyboard and mouse events and injects a virtual touchscreen into Waydroid. Control mapping is disabled by default because the universal layout was not effective in Moto Rush and an active mapper captures keys across the desktop. Enable it only with `apkstart --game <app>` or `apkstart --controls on <package>` after a game-specific layout has been verified. A detached watcher and the runtime watchdog release the mapping when the game exits, `apkstart --controls off` releases it immediately, and `apkstart --controls status` reports the current state. Press F2 inside a game to edit the control layout.
 
 The on-screen keyboard switch described above is independent of game controls.
 
