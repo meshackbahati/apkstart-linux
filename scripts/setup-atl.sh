@@ -52,9 +52,13 @@ if [ ! -d art_standalone ]; then
   run git clone https://gitlab.com/android_translation_layer/art_standalone.git
 fi
 say "Installing art_standalone into the portable prefix"
-(cd art_standalone && run make -j"$(nproc)" ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
-   HOST_C_INCLUDES="-I$ATL_ROOT/include" \
-   HOST_LDFLAGS="-L$ATL_ROOT/lib -Wl,-rpath,$ATL_ROOT/lib" \
+# wolfSSL JNI hard-codes external/wolfssl as an include path; point it at the
+# portable prefix rather than patching the vendored Android makefile.
+mkdir -p art_standalone/external/wolfssl art_standalone/out/host/linux-x86/lib64
+ln -sfn "$ATL_ROOT/include/wolfssl" art_standalone/external/wolfssl/wolfssl
+ln -sfn "$ATL_ROOT/lib/libwolfssl.so" art_standalone/out/host/linux-x86/lib64/libwolfssl.so
+(cd art_standalone && LIBRARY_PATH="$ATL_ROOT/lib" LD_LIBRARY_PATH="$ATL_ROOT/lib" \
+   run make -j"$(nproc)" ____LIBDIR=lib ____PREFIX="$ATL_ROOT" \
   && run make ____LIBDIR=lib ____PREFIX="$ATL_ROOT" install) || exit 1
 
 if [ ! -d android_translation_layer ]; then
