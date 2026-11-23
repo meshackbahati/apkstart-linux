@@ -106,7 +106,8 @@ class AtlBackend extends Backend {
   }
 
   async probe() {
-    if (process.platform !== 'linux') return { ok: true, found: false, detail: 'ATL requires Linux' };
+    // Probing is platform-neutral so the backend can be unit-tested on any
+    // host; actual use is gated by the Linux-only setup module.
     if (this.binary && fs.existsSync(this.binary)) {
       return { ok: true, found: true, path: this.binary, detail: 'configured ATL binary' };
     }
