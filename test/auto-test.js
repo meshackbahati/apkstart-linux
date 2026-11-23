@@ -2439,7 +2439,7 @@ const platform = require('../src/core/platform');
     assert(/_consoleAlive\(\)/.test(reuse), 'start() 的复用分支必须再确认控制台端口上真有机器');
     assert(/this\.proc = null;/.test(reuse), '确认没在跑就把 proc 清掉，走真正的开机流程');
     // stop() 关干净后必须丢掉启动器句柄，否则 running() 永远为 true
-    const stopFn = emuJs.slice(emuJs.indexOf('async stop('), emuJs.indexOf('async stop(') + 1800);
+    const stopFn = emuJs.slice(emuJs.indexOf('async stop('), emuJs.indexOf('async stop(') + 2600);
     assert(/killAttempt\(\)[\s\S]{0,200}this\.proc = null;/.test(stopFn), 'stop() 收尾要清掉 this.proc');
     // engine 层还要防另一种假象：模拟器刚退出时 adb 仍短时报 device，
     // isOnline() 于是判成就绪，后续命令全部 device not found。
