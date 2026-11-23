@@ -984,7 +984,7 @@ const platform = require('../src/core/platform');
     assert(/agent\.setTitle\(/.test(appwin), '独立窗口打开时要真的改标题');
   });
 
-  await test('中文环境：开机注入 locale、静默装拼音输入法、captive portal 国内端点', () => {
+  await test('English guest locale by default; Chinese IME remains available', () => {
     const root = path.join(__dirname, '..');
     const emuJs = fs.readFileSync(path.join(root, 'src', 'core', 'emulator.js'), 'utf8');
     const adbJs = fs.readFileSync(path.join(root, 'src', 'core', 'adb.js'), 'utf8');
@@ -1000,9 +1000,9 @@ const platform = require('../src/core/platform');
     assert(!/-prop[\s\S]{0,80}persist\.sys\.locale/.test(emuCode),
       '不能再用无效的 -prop persist.sys.locale');
     assert(/_guestLocale/.test(emuJs), '要有可配置的语言来源');
-    // 默认中文
-    assert(/locale:\s*'zh-CN'/.test(storeJs), '默认语言必须是简体中文');
-    assert(/chineseIme:\s*true/.test(storeJs), '默认开启中文输入法');
+    // Linux build defaults to English; Chinese remains an opt-in setting.
+    assert(/locale:\s*'en-US'/.test(storeJs), '默认语言必须是英文');
+    assert(/chineseIme:\s*false/.test(storeJs), '默认不安装中文输入法');
 
     // 输入法：随包带 APK、开机装好并启用
     assert(fs.existsSync(path.join(root, 'assets', 'PinyinIME.apk')), '缺少 PinyinIME.apk');

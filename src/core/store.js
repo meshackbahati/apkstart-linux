@@ -85,12 +85,13 @@ const DEFAULT_SETTINGS = {
     // 网络加速：给模拟器指定国内公共 DNS。安卓默认的 10.0.2.3 要走主机 DNS，
     // VPN / 公司网 / 某些运营商下解析会拖到几百毫秒，视频类应用首屏会明显发卡。
     fastDns: true,
-    // 系统语言：开机时由 emulator -prop 注入（guest 里 setprop 会被 SELinux 拒绝）。
-    // 默认简体中文。设成 en-US 或 off 就回到镜像原生英文。
-    locale: 'zh-CN',
-    // 中文输入法：随包带 AOSP 谷歌拼音输入法，开机后静默安装并启用。
-    // 系统镜像只带 LatinIME（英文键盘），不装就打不了中文。
-    chineseIme: true,
+    // Guest system language. The Linux build defaults to the image's native
+    // English so application menus are not Chinese; set zh-CN to restore the
+    // original behaviour.
+    locale: 'en-US',
+    // The Chinese IME is opt-in in the Linux build. The bundled LatinIME
+    // handles the host keyboard without installing another input method.
+    chineseIme: false,
     chineseImeDefault: true,
     // 快照：quickboot 内存快照让二次启动只要几秒，代价是磁盘上多一份约 2~3GB 的
     // ram.bin。磁盘紧张时可以关掉（只影响启动速度，不影响应用数据）。
@@ -301,6 +302,14 @@ const store = {
     // 旧版本默认无头运行：应用进程能起来但屏幕上没有窗口，等效于「打不开」。
     // 无条件迁移到带窗口模式，且不再允许通过旧配置把它关掉。
     s.engine.headless = false;
+    // One-time migration: older profiles pinned the guest to zh-CN and installed
+    // the Chinese IME. The Linux build is English by default; users can still
+    // set zh-CN explicitly after this migration.
+    if (!s.engine.localeMigratedEnglish) {
+      s.engine.locale = 'en-US';
+      s.engine.chineseIme = false;
+      s.engine.localeMigratedEnglish = true;
+    }
     // 旧版本退出壳层时会杀掉整个 Android 运行时，导致桌面图标点开闪一下就没了。
     s.hideAfterLaunch = false;
     // 旧版本用 Android freeform 小窗，现在整个模拟器窗口就是应用窗口，

@@ -671,7 +671,7 @@ class Runtime {
     // 用户可在设置里关掉自动配置（engine.chineseIme=false）。
     if (!this._chineseReady && this.settings.engine.chineseIme !== false) {
       try {
-        const locale = this.settings.engine.locale || 'zh-CN';
+        const locale = this.settings.engine.locale || 'en-US';
         await client.ensureChineseLocale(locale);
         const path = require('path');
         const apk = path.join(this.appRoot, 'assets', 'PinyinIME.apk');
@@ -709,11 +709,20 @@ class Runtime {
   async _ensureSystemLocale(client, locale) {
     const fs = require('fs');
     const path = require('path');
-    const want = String(locale || 'zh-CN');
-    if (want === 'off' || want === 'en-US') return;
+    const want = String(locale || 'en-US');
+    if (want === 'off') return;
     // 已经生效（system_locales 是目标语言，或语言列表里第一项是它）
     const cur = await client.shell('settings get system system_locales', { timeout: 8000 }).catch(() => '');
     const s = String(cur).trim();
+    if (want === 'en-US') {
+      // A snapshot saved while the guest was Chinese restores Chinese even
+      // though -change-locale only runs on a full boot. Reset the setting and
+      // drop that snapshot so the next cold boot applies English.
+      if (!/^zh[-_]|zh-CN/i.test(s)) return;
+      await client.shell('settings put system system_locales en-US').catch(() => {});
+      this.emulator?.invalidateSnapshot();
+      return;
+    }
     if (s === want || s.indexOf(want) === 0 || /^zh[-_]/.test(s)) return;
     const marker = path.join(store.DATA_DIR, 'locale-' + want.replace(/[^a-zA-Z0-9_-]/g, '_') + '.done');
     if (fs.existsSync(marker)) return;

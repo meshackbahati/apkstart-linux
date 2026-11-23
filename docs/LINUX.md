@@ -88,6 +88,10 @@ Desktop users type on the host keyboard, so ApkStart keeps Android's on-screen k
 
 Waydroid 1.6.3 runs all multi-window applications on one shared Android display. Each application receives its own top-level window, but the Android window manager draws the application inside a freeform rectangle on that display. Consequently the window close button and Alt+F4 are ignored, resizing the top-level window resizes the shared display rather than the application, and Android draws its own title bar. This is an upstream limitation documented in [waydroid issue #2470](https://github.com/waydroid/waydroid/issues/2470); the proposed fix, [android_hardware_waydroid PR #93](https://github.com/waydroid/android_hardware_waydroid/pull/93), does not change multi-window mode. ApkStart cannot correct this from outside the container. Applications can still be stopped reliably from the application list, which issues `am force-stop` and closes their window.
 
+## Guest language
+
+The Linux build boots the Android guest in English (`engine.locale = en-US`) and does not install the Chinese IME by default, so application menus and system settings are not Chinese. Existing profiles are migrated once. Set `engine.locale` to `zh-CN` and `engine.chineseIme` to `true` in settings if the original behaviour is wanted.
+
 ## Installation and first-run setup
 
 Install the command globally and initialise the backend once:
