@@ -19,6 +19,7 @@ const doctor = require('./doctor');
 const container = require('./container');
 const backends = require('./backends');
 const platform = require('./platform');
+const { killTree } = require('./prockill');
 
 const LOG_DIR = path.join(store.DATA_DIR, 'logs');
 const MONITOR_PORT = 5556;
@@ -782,11 +783,7 @@ class Runtime {
         const m = /:(\d+)$/.exec(this.emuSerial);
         const port = m ? Number(m[1]) - 1 : this.emulator.port;
         const pid = await this.pidOnPort(port);
-        if (pid) {
-          await new Promise((resolve) => {
-            execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => resolve());
-          });
-        }
+        if (pid) await killTree(pid);
       }
       this._activeApps.clear();
       return true;
@@ -957,12 +954,7 @@ class Runtime {
         // AVD 目录有锁：留着这台会让新实例直接退出，表现成"怎么都开不了机"。
         // adb 都连不上了，只能按控制台端口找到进程强杀。
         const pid = await this.pidOnPort(port);
-        if (pid) {
-          await new Promise((resolve) => {
-            const { execFile } = require('child_process');
-            execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => resolve());
-          });
-        }
+        if (pid) await killTree(pid);
         await new Promise((r) => setTimeout(r, 1200));
         continue;
       }

@@ -18,6 +18,7 @@ const { Provisioner } = require('./provision');
 const doctor = require('./doctor');
 const drivers = require('./drivers');
 const userdata = require('./userdata');
+const { killTree } = require('./prockill');
 const platform = require('./platform');
 
 const AVD_NAME = 'apkstart';
@@ -281,9 +282,7 @@ class EmulatorEngine {
       return 0;
     }
     onLog(`清理 ${pids.size} 个残留模拟器进程`);
-    await Promise.all([...pids].map((pid) => new Promise((r) => {
-      execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => r());
-    })));
+    await Promise.all([...pids].map((pid) => killTree(pid)));
     await sleep(1200);
     this.clearLocks(avdDir);
     return pids.size;
@@ -910,9 +909,7 @@ class EmulatorEngine {
     this.proc = null;
     if (proc) {
       try { proc.kill(); } catch (_) { /* ignore */ }
-      if (process.platform === 'win32' && proc.pid) {
-        try { spawn('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); } catch (_) { /* ignore */ }
-      }
+      if (proc.pid) await killTree(proc.pid);
     }
     await sleep(800);
     // proc 句柄常常已经没了（emulator.exe 启动完就退出，qemu 是 detached 的独立进程），
@@ -1586,6 +1583,10 @@ class EmulatorEngine {
       // eslint-disable-next-line no-await-in-loop
       await sleep(300);
     }
+    // The console port closes before QEMU has finished flushing the qcow2
+    // overlay. Killing the orphan immediately loses recent /data writes, which
+    // appears to the user as "installed apps disappeared after a restart".
+    await sleep(8000);
     await this.killAttempt();
     // 关干净了就把启动器句柄丢掉。留着它会让 running() 永远返回 true、
     // start() 以为还能复用（见 start() 里的注释）。
