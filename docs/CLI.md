@@ -16,7 +16,7 @@ ApkStart is available as a global `apkstart` command after `npm install -g .` or
 | `apkstart --controls on [pkg]` / `off [pkg]` | Enable or release controller mapping globally or for one package |
 | `apkstart --controls status` | Print the current mapping state as JSON |
 | `apkstart --controls edit` | Open the controller layout editor as a desktop application |
-| `apkstart --backend <id>` | Select `builtin`, `waydroid` or `atl` |
+| `apkstart --backend <id>` | Select `waydroid` (recommended on Linux), `builtin` or `atl` |
 | `apkstart init [--backend <id>]` | Install and configure the dependencies of that backend |
 | `apkstart init --check` | Report what is installed without changing anything |
 | `apkstart install` | Install the command globally, register file association and initialise |
@@ -27,8 +27,8 @@ ApkStart is available as a global `apkstart` command after `npm install -g .` or
 
 `apkstart init` dispatches through `src/core/setup.js`. Adding a backend requires one registry entry and one setup script, so the initialiser never installs dependencies for a backend the user did not choose.
 
-- `builtin` downloads the emulator and system image on first use; it needs no system packages.
-- `waydroid` runs `scripts/setup-linux.sh`: installs Waydroid, enables the container, prepares the image, configures multi-window mode and the soft keyboard, authorises the bundled adb key, installs `key2touch`, and writes narrow sudo rules for `lxc-unfreeze` and `key2touch`.
+- `waydroid` (recommended on Linux, and picked automatically once installed) runs `scripts/setup-linux.sh`. It checks for a Wayland session and binder, installs Waydroid on Arch, Debian/Ubuntu, Fedora, openSUSE or Void, enables the container, prepares the image, configures multi-window mode and the soft keyboard, authorises the bundled adb key, installs `key2touch` where an AUR helper is available, and writes narrow, `visudo`-validated sudo rules for `lxc-unfreeze` and `key2touch`. Optional: `WAYDROID_GAPPS=1` (Google Play services image), `APKSTART_SKIP_CONTROLS=1`.
+- `builtin` downloads the emulator and system image on first use; it needs no system packages. It is the fallback for X11, NVIDIA and ARM-only apps.
 - `atl` runs `scripts/setup-atl.sh`, which builds the Android Translation Layer and its native dependencies from source. It is experimental and app compatibility varies.
 
 The sudo rules are exact command whitelists, not blanket passwordless root. They allow ApkStart to thaw a frozen container and to manage game controls without an interactive prompt.

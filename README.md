@@ -89,7 +89,28 @@ and `npm run selftest` on a host with KVM.
 
 ## Requirements
 
-| Requirement | Why it matters | How to check |
+**Waydroid is the recommended backend on Linux.** Each Android app opens as its
+own native desktop window, Android shares the host kernel instead of booting a
+virtual phone (about 0.9 GB resident), and graphics go through the host's Mesa
+stack, so it also runs on machines without a dedicated GPU. Its requirements:
+
+| Requirement (Waydroid) | Why it matters | How to check |
+|---|---|---|
+| A Wayland session (GNOME, KDE Plasma, Hyprland, Sway, …) | Waydroid draws each app as a Wayland window; it does not run on X11 | `echo $XDG_SESSION_TYPE` |
+| Binder in the kernel | Android's IPC; built into most current distribution kernels | `grep binder /proc/filesystems` or `zgrep BINDER /proc/config.gz` |
+| Mesa graphics (Intel, AMD, or CPU rendering) | The NVIDIA proprietary driver is not supported by Waydroid; use the built-in backend there | `glxinfo -B \| grep vendor` |
+| x86_64 apps, or ARM translation added to Waydroid | Waydroid has no ARM translation by default | `unzip -l app.apk \| grep lib/` |
+| About 3 GB free disk | Waydroid image plus app data | `df -h` |
+
+`scripts/setup-linux.sh` checks the session and binder before it changes
+anything, then tells you exactly what to fix.
+
+The **built-in emulator** (`builtin`) is the fallback that works everywhere,
+including X11, NVIDIA and machines where Waydroid is not set up. It shows one
+emulator window per running app rather than native app windows. Its
+requirements:
+
+| Requirement (built-in) | Why it matters | How to check |
 |---|---|---|
 | x86_64 Linux with X11 or Wayland | The packaged runtime is built for x86_64 only; Linux ARM64 has no official Android Emulator archive | `uname -m` |
 | Hardware virtualisation enabled (VT-x or AMD SVM) | Without KVM the guest falls back to software emulation, which boots but is too slow for games | `grep -E 'vmx\|svm' /proc/cpuinfo` |
@@ -149,13 +170,19 @@ npm install
 npm start
 ```
 
-To install the global `apkstart` command and register desktop files:
+To install the global `apkstart` command, register desktop files and set up the
+recommended Waydroid backend in one go:
 
 ```bash
-npm install -g .
-# or, for a script that also creates launcher entries:
 bash scripts/install.sh
+# choose another backend: APKSTART_BACKEND=builtin bash scripts/install.sh
 ```
+
+The script checks Node.js, installs dependencies (and repairs an incomplete
+Electron download), installs the command (into `~/.local/bin` when global npm
+needs root), registers `.apk` double-click and the menu launchers with absolute
+paths (so they work with nvm or fnm), then runs the backend setup. If the
+backend cannot be set up yet, ApkStart still works with the built-in emulator.
 
 Verify the installation without starting the GUI or downloading anything:
 
@@ -167,6 +194,37 @@ apkstart --list
 ```
 
 ## One-time setup
+
+### Recommended: Waydroid
+
+One command installs and configures everything. It asks for your password for
+the system steps:
+
+```bash
+apkstart init --backend waydroid
+# or, without the global command:
+bash scripts/setup-linux.sh
+```
+
+It works on Arch and derivatives (Manjaro, EndeavourOS, CachyOS, Garuda),
+Debian, Ubuntu and derivatives (Mint, Pop!_OS, Zorin, elementary), Fedora and
+derivatives, openSUSE and Void. On NixOS, enable
+`virtualisation.waydroid.enable = true;` first. Elsewhere, install Waydroid
+with your package manager, then run the script. It is safe to run again. It:
+
+1. checks for a Wayland session and binder, and explains any fix needed;
+2. installs Waydroid (on Debian and Ubuntu from the official `repo.waydro.id`);
+3. enables the container and downloads the Android image once (about 1 GB;
+   set `WAYDROID_GAPPS=1` for an image with Google Play services);
+4. turns on multi-window mode, so every app gets its own window;
+5. on Arch with `yay` or `paru`, installs `key2touch` game controls (skip with
+   `APKSTART_SKIP_CONTROLS=1`) with two narrow, validated sudo rules;
+6. authorises adb and selects the Waydroid backend.
+
+Once Waydroid is installed and initialised, ApkStart uses it automatically on
+Linux unless another backend was selected explicitly.
+
+### Fallback: built-in emulator
 
 1. Start ApkStart and open **Settings → Common & Install**. Enable **Associate
    .apk files**. The handler is registered for
@@ -185,26 +243,25 @@ apkstart --list
 
 ### Backends
 
-The default `builtin` backend is self-contained. Two Linux alternatives are
-opt-in and must be initialised explicitly:
+Waydroid is the recommended backend on Linux and is picked automatically once
+it is set up. The built-in emulator is the fallback, and ATL is experimental:
 
 ```bash
-apkstart init --backend waydroid   # shared-kernel container, about 0.9 GB resident
+apkstart init --backend waydroid   # recommended: native app windows, about 0.9 GB resident
+apkstart --backend builtin         # force the self-contained emulator
 apkstart init --backend atl        # experimental native processes
-apkstart --backend waydroid        # select it for daily use
 apkstart init --check              # report dependency state
 ```
 
 | Backend | Id | What it runs | When to choose it |
 |---|---|---|---|
-| Self-contained emulator | `builtin` | Google Android Emulator, KVM accelerated, x86_64 Android 14 image with ARM translation | General use, games, apps that need Google Play |
-| Waydroid container | `waydroid` | Android in a shared-kernel LXC container | Lower resident memory, persistent app state, Wayland desktops with binder and `/dev/dri` |
+| **Waydroid container (recommended)** | `waydroid` | Android in a shared-kernel LXC container; each app is a native Wayland window | Everyday use on Wayland desktops with Intel, AMD or CPU graphics |
+| Self-contained emulator | `builtin` | Google Android Emulator, KVM accelerated, x86_64 Android 14 image with ARM translation | X11 sessions, NVIDIA proprietary drivers, ARM-only apps, apps that need Google Play |
 | Android Translation Layer | `atl` | Native Linux processes derived from the APK | Experimental; only APKs without Google Play, DRM, FCM or Binder dependencies |
 
-Waydroid needs a Wayland session, binder devices and a render node under
-`/dev/dri`. NVIDIA proprietary drivers are not supported by Waydroid. Its setup
-script configures adb authorisation, a narrow sudo rule for idle thawing and
-keyboard-to-touch controls. Waydroid 1.6.3 draws its own title bar and ignores
+Waydroid needs a Wayland session, binder and a Mesa render node under
+`/dev/dri`. The NVIDIA proprietary driver is not supported by Waydroid. Its setup script configures adb authorisation, a narrow
+sudo rule for idle thawing and keyboard-to-touch controls. Waydroid 1.6.3 draws its own title bar and ignores
 window close on multi-window apps; stop the app from the application list
 instead. ATL requires a source build, and its framework implementations are
 incomplete; games with OpenGL or Binder dependencies may not run.
@@ -220,7 +277,8 @@ apkstart --install ~/Downloads/app.apk
 ApkStart parses the package offline, checks the data partition and free disk
 space, installs it, writes a `.desktop` launcher to the desktop and to
 `~/.local/share/applications`, then records its metadata. Click the launcher to
-open the application in its own emulator window.
+open the application in its own window (a native app window with Waydroid, the
+emulator window with the built-in backend).
 
 ## Daily use
 
@@ -263,7 +321,9 @@ few seconds.
 
 ## Windows and input
 
-Linux uses the emulator's own top-level window. `SetParent` embedding is a
+With Waydroid, every Android app is its own top-level Wayland window: it shows
+in the dock and the task switcher and tiles like any desktop app. With the
+built-in backend, Linux uses the emulator's own top-level window. `SetParent` embedding is a
 Windows-only feature and is skipped. The panel shape is 1280×720 landscape by
 default on Linux, which suits a desktop window better than a portrait phone
 panel. Per-app orientation overrides are remembered.
@@ -354,7 +414,7 @@ verified before adoption, and an interrupted update resumes on the next launch.
 | Games | Resource strategy `smooth`, explicit memory value above the automatic 2 GB ceiling, host GPU rendering |
 | Corporate or VPN network | DNS preset `off` for intranet names, or `Cloudflare` if the corporate resolver is slow |
 | No autostart | Disable "Start with the system" in Settings → Common & Install; it is enabled by default |
-| Waydroid | Select the backend with `apkstart --backend waydroid` after `apkstart init --backend waydroid` |
+| Native app windows (recommended) | Run `apkstart init --backend waydroid` once; ApkStart uses Waydroid automatically afterwards |
 
 ## Releasing
 
@@ -427,7 +487,8 @@ experience.
 
 - Linux ARM64 is not supported because no official emulator archive exists for
   that host.
-- Window embedding is Windows-only; Linux uses a separate emulator window.
+- Window embedding is Windows-only. On Linux, Waydroid gives native app
+  windows; the built-in backend uses a separate emulator window.
 - Waydroid's multi-window mode shares one Android display and ignores window
   close; stop the app from the application list instead.
 - Game controls require a verified per-game layout; the universal layout is not

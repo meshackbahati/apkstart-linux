@@ -2,7 +2,19 @@
 
 This document describes the Linux usage path: one click on an APK installs it, one click on the generated launcher opens the app, and the runtime stays light when no app is in the foreground.
 
-## Requirements
+## Recommended backend: Waydroid
+
+Waydroid is the recommended way to run ApkStart on Linux. Every Android app opens as its own native Wayland window, the container shares the host kernel (about 0.9 GB active instead of a 2 GB virtual machine), and rendering goes through the host's Mesa stack. Set it up once:
+
+```
+apkstart init --backend waydroid     # or: bash scripts/setup-linux.sh
+```
+
+The script supports Arch, Debian/Ubuntu, Fedora, openSUSE and Void families (plus guidance for NixOS and other distributions), checks for a Wayland session and binder before changing anything, and is safe to rerun. Once Waydroid is installed and initialised, ApkStart selects it automatically when no backend has been chosen. Details are in [Waydroid backend](#waydroid-backend-recommended) below.
+
+The self-contained QEMU emulator described next remains the fallback for X11 sessions, NVIDIA proprietary drivers and ARM-only apps.
+
+## Requirements (built-in emulator)
 
 - x86_64 Linux with a desktop session (X11 or Wayland) and `/dev/kvm` accessible to the user.
 - Hardware virtualization enabled in firmware (Intel VT-x or AMD SVM). Without KVM the runtime falls back to software emulation, which boots but is too slow for games.
@@ -57,13 +69,13 @@ The following was observed on an x86_64 host with accessible `/dev/kvm`, using a
 - `assets/PinyinIME.apk` was parsed offline, installed through the same adb client (`Success`), resolved by `pm path`, and its launch activity was started with `am start`.
 - Stopping the runtime produced a quickboot snapshot; the subsequent boot took about 63 seconds instead of a full cold boot.
 
-## Waydroid backend (experimental)
+## Waydroid backend (recommended)
 
 For persistent application state and a lower memory footprint, the Linux build can use Waydroid instead of QEMU. Waydroid runs Android in a shared-kernel LXC container rather than a virtual machine, so there is no emulated CPU and no fixed 2 GB guest allocation. On the development host the container cgroup used about 620 MB of anonymous memory, 110 MB of kernel memory and 155 MB of shared graphics memory, approximately 0.9 GB active, while the QEMU profile reserves 2 GB. Application data in `/data` survives container restarts.
 
 Prerequisites: a Wayland session, binder devices, a render node under `/dev/dri`, and a Waydroid installation with its container image initialised. Recent Arch kernels provide binder through `rust_binder`; Waydroid allocates `anbox-binder` itself and no manual `/dev/binder` symlinks should be created. NVIDIA proprietary drivers are not supported by Waydroid.
 
-The backend is opt-in. Add the following to the settings file (`$XDG_DATA_HOME/apkstart/settings.json`, or `~/.local/share/apkstart/settings.json` by default):
+`apkstart init --backend waydroid` selects the backend. When no backend has been chosen, ApkStart picks Waydroid automatically as soon as the `waydroid` binary and an initialised system image are present, and falls back to the built-in emulator otherwise. To pin a backend by hand, set it in the settings file (`$XDG_DATA_HOME/apkstart/settings.json`, or `~/.local/share/apkstart/settings.json` by default):
 
 ```json
 {
@@ -71,9 +83,9 @@ The backend is opt-in. Add the following to the settings file (`$XDG_DATA_HOME/a
 }
 ```
 
-ApkStart then connects to Waydroid's adb bridge using the bundled adb on its isolated server port, and launches applications through `waydroid app launch`. The default remains the self-contained QEMU runtime; no external runtime is ever selected automatically.
+ApkStart then connects to Waydroid's adb bridge using the bundled adb on its isolated server port, and launches applications through `waydroid app launch`. Use `"backend": "builtin"` to stay on the self-contained QEMU runtime.
 
-A one-time adb authorization is required on a fresh container. Copy the host public key into the guest and restart adbd:
+A one-time adb authorization is required on a fresh container. The setup script does this for you; to do it by hand, copy the host public key into the guest and restart adbd:
 
 ```
 sudo lxc-attach -P /var/lib/waydroid/lxc -n waydroid -- sh -c \
@@ -107,12 +119,12 @@ The Linux build boots the Android guest in English (`engine.locale = en-US`) and
 
 ## Installation and first-run setup
 
-Install the command globally and initialise the backend once:
+Install the command, launchers and the recommended Waydroid backend in one step:
 
 ```
-npm install -g .
-apkstart init --backend waydroid
-apkstart init --check
+bash scripts/install.sh                          # Waydroid (recommended)
+APKSTART_BACKEND=builtin bash scripts/install.sh # built-in emulator only
+apkstart init --check                            # report dependency state
 ```
 
 `apkstart init` runs the setup module registered for the selected backend in `src/core/setup.js`. It never installs dependencies for a backend the user did not choose. The Waydroid module prepares the container, authorises the bundled adb key and configures keyboard-to-touch controls.
@@ -127,7 +139,7 @@ The on-screen keyboard switch described above is independent of game controls.
 
 - Automatic updates replace the AppImage in place by generating a POSIX shell script. The AppImage runtime sets `APPIMAGE`, which the updater uses as the replacement target. Extracted or package-manager installs have no single replaceable file, so they fall back to the **open download page** action.
 - During verification, a full stop and restart of this QEMU AVD sometimes lost applications installed in the previous session. Keeping prewarming enabled avoids the restart during normal use. A shared-kernel Android container would be required for reliable per-application windows and state; that is a separate, larger effort.
-- Window embedding (`SetParent`) is a Windows-only feature and is skipped on Linux; the emulator always uses its own window.
+- Window embedding (`SetParent`) is a Windows-only feature and is skipped on Linux. Waydroid gives native per-app windows; the built-in emulator uses its own window.
 - `/dev/kvm` must be readable and writable. Most distributions require membership of the `kvm` group; log out and back in after adding the user.
 
 <!-- apkstart-linux-origin -->
