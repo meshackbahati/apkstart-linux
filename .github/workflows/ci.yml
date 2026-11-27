@@ -36,6 +36,14 @@ jobs:
           bash -n scripts/*.sh
           python3 -m py_compile scripts/translate-key2touch.py
 
+      # The documentation screenshots are built from the real renderer with a
+      # stubbed IPC bridge, so a broken UI control is caught without Electron.
+      - name: Build UI screenshot fixture
+        run: |
+          npm run docs:fixture
+          test -s test/out/ui-fixture/stub.js
+          test -s test/out/ui-fixture/index.html
+
       # The CLI must work without Electron, a running runtime or root access.
       - name: CLI smoke
         run: |
