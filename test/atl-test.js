@@ -64,7 +64,16 @@ function make(overrides = {}, appOverrides = {}) {
 
   await test('check reports a missing ATL installation', async () => {
     const { backend } = make({ run: () => ({ ok: true, stdout: '', stderr: '' }) });
-    const c = await backend.check();
+    // Hermetic: a real ATL build on the test host must not be found.
+    const saved = { HOME: process.env.HOME, XDG_DATA_HOME: process.env.XDG_DATA_HOME, APPDATA: process.env.APPDATA };
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'apkstart-noatl-'));
+    process.env.HOME = empty; process.env.XDG_DATA_HOME = empty; delete process.env.APPDATA;
+    let c;
+    try { c = await backend.check(); } finally {
+      for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+      fs.rmSync(empty, { recursive: true, force: true });
+    }
+    if (fs.existsSync('/usr/local/bin/android-translation-layer')) return; // system install on this host
     assert.equal(c.ok, false);
     assert.equal(c.needs, 'atl');
   });
@@ -234,6 +243,20 @@ function make(overrides = {}, appOverrides = {}) {
     assert.equal(fs.existsSync(data), false);
     assert.equal(fs.existsSync(path.join(ATL_DIR, 'launch', 'org.fdroid.fdroid.apk')), false);
     assert.equal(fs.existsSync(backend.logFile('org.fdroid.fdroid')), false);
+  });
+
+  await test('AtlClient answers every adb client method the shared flow calls', () => {
+    const { AtlClient } = require('../src/core/backends/atl');
+    const { AdbClient } = require('../src/core/adb');
+    const have = new Set(Object.getOwnPropertyNames(AtlClient.prototype));
+    const adb = new Set(Object.getOwnPropertyNames(AdbClient.prototype));
+    const used = new Set();
+    for (const f of ['src/core/installer.js', 'src/core/engine.js', 'src/main.js', 'bin/apkstart.js']) {
+      const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+      for (const m of src.matchAll(/\b(?:client|c|rt\.client|this\.client\(\))\.([a-zA-Z]+)\(/g)) used.add(m[1]);
+    }
+    const missing = [...used].filter((m) => adb.has(m) && !have.has(m));
+    assert.deepEqual(missing, [], `AtlClient lacks: ${missing.join(', ')}`);
   });
 
   console.log('\n[Backend registry]');

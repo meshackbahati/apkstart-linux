@@ -111,6 +111,44 @@ class AtlClient {
   async clearData(pkg) { return this.backend.clearData(pkg); }
   async uninstall(pkg) { return this.backend.uninstallApp(pkg); }
   async disposeInput() { /* no persistent shell */ }
+
+  // The shared install and launch flow was written for an adb device. ATL has
+  // no device, so the device-only steps below are answered locally: no-ops
+  // where there is nothing to configure, and real answers where ATL has one.
+  async connect() { return true; }
+  async deviceState() { return 'device'; }
+  async exec() { return { stdout: '', stderr: '', code: 0 }; }
+  async sdkInt() { return SDK_CEIL; }
+  async androidVersion() { return 'ATL'; }
+  async batteryOptimizeOff() { return true; }
+  async dismissPermissionDialog() { return false; }
+  async ensureChineseIme() { return false; }
+  async ensureChineseLocale() { return false; }
+  async ensureFreeform() { return true; }
+  async prepareForeground() { return true; }
+  async setOrientation() { return true; }
+  /** ATL has no permission prompts to pre-grant; nothing is granted. */
+  async grantRuntimePermissions() { return []; }
+
+  /** The launcher activity comes from the APK, recorded at install time. */
+  async resolveLauncher(pkg) {
+    const st = this.backend.deps.store;
+    const app = st && st.getApp ? st.getApp(pkg) : null;
+    const act = app && (app.activity || app.launchActivity);
+    if (!act) return null;
+    return act.includes('/') ? act : `${pkg}/${act}`;
+  }
+
+  /** ATL draws its own window; treat "still running after launch" as the first frame. */
+  async waitForAppFirstFrame(pkg, { timeoutMs = 4000, intervalMs = 250 } = {}) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeoutMs) {
+      if (!this.backend.running().includes(pkg)) return false;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    return this.backend.running().includes(pkg);
+  }
 }
 
 class AtlBackend extends Backend {
@@ -204,7 +242,7 @@ class AtlBackend extends Backend {
   _env(pkg = '', cfg = {}) {
     const root = this.portableRoot();
     const env = { ...process.env };
-    env.LD_LIBRARY_PATH = [path.join(root, 'lib'), path.join(root, 'lib64'), env.LD_LIBRARY_PATH].filter(Boolean).join(':');
+    env.LD_LIBRARY_PATH = [path.join(root, 'lib'), path.join(root, 'lib', 'art'), path.join(root, 'lib64'), env.LD_LIBRARY_PATH].filter(Boolean).join(':');
     if (fs.existsSync(path.join(root, 'share', 'bionic_translation'))) {
       env.BIONIC_TRANSLATION_CONFIG = path.join(root, 'share', 'bionic_translation', 'cfg.d', 'bionic_translation.cfg');
     }
