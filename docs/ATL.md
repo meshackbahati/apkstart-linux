@@ -17,11 +17,31 @@ The backend sets `LD_LIBRARY_PATH` and `BIONIC_TRANSLATION_CONFIG` when launchin
 
 ## Build sequence
 
-1. Install Arch build dependencies: GTK 4, libportal, WebKitGTK 6, speech dispatcher, ALSA, FFmpeg, OpenXR, libsecret, libdrm, libgudev, libwebp, LZ4, libcap, SQLite, JDK 17, Maven, Meson and Ninja.
-2. Build `bionic_translation` and install it into the prefix.
-3. Build `art_standalone` with `____PREFIX` pointing at the prefix. ART compilation is long (tens of minutes) and produces `dex2oat` and the ART libraries.
-4. Build ATL with Meson using `-Ddownload_tool_deps=true` and the same prefix.
-5. Select the backend with `apkstart --backend atl`.
+Run it as your normal user; it asks for sudo only to install packages:
+
+```
+apkstart init --backend atl        # or: bash scripts/setup-atl.sh
+```
+
+| Distribution | What the script does |
+|---|---|
+| Arch and derivatives | Installs build dependencies with pacman, then builds everything into the prefix |
+| Debian, Ubuntu and derivatives | Installs dependencies with apt, uses the distro's `asm` and `getopt` jars |
+| Fedora | Installs dependencies with dnf (`pkgconfig(...)` names), downloads the generator jars with Maven |
+| openSUSE | Installs dependencies with zypper, points Meson at the `gnu.getopt` jar |
+| Alpine (edge/testing) | Installs the packaged `android-translation-layer`; nothing is built |
+
+Steps:
+
+1. Install build dependencies (skip with `APKSTART_ATL_SKIP_DEPS=1`) and find JDK 17.
+2. Build wolfSSL with JNI support.
+3. Build `bionic_translation`.
+4. Build `art_standalone` with `____PREFIX` pointing at the prefix. This is the longest step (30–90 minutes) and produces `dex2oat` and the ART libraries.
+5. Build the optional `libopensles-standalone` audio library (skip with `APKSTART_ATL_OPENSLES=0`). Failure here does not stop the build.
+6. Build ATL with Meson into the same prefix.
+7. Run `android-translation-layer --help` as a smoke test and select the backend.
+
+Each finished component is recorded in `$PREFIX/.apkstart/<component>` with its source commit. A rerun skips components whose commit has not changed, so an interrupted or failed build resumes from the failing step. `APKSTART_ATL_JOBS` sets the parallel job count.
 
 ## Launching
 
@@ -45,6 +65,33 @@ Per-app overrides live in `settings.atl[<package>]` and may contain `size`
 `deniedPermissions`. The last three require the maintained ATL fork; vanilla
 ATL ignores those environment variables. They are harmless on vanilla builds.
 
+### Compatibility check
+
+ATL runs the APK's native libraries directly and has no Google Play services, so some apps cannot work however ATL is built. Before installing on the ATL backend, ApkStart reads the APK offline and reports one of:
+
+| Verdict | Meaning | Install |
+|---|---|---|
+| `likely` | Nothing known to be missing | Proceeds |
+| `risky` | Uses Play services, Firebase push, Play licensing or Integrity, or a game engine (Unity, Unreal, Godot, Cocos2d, Flutter) | Proceeds with a warning |
+| `blocked` | Native code exists only for other CPU types (for example ARM-only on x86_64); ATL cannot translate instructions | Refused unless `--force` |
+
+Check APKs without installing them:
+
+```
+apkstart atl-check app.apk [more.apk ...] [--json]
+```
+
+The verdict is saved on the app record (`atlCompat`). References to `MediaDrm` are reported as a note only, because media libraries include them even in apps that never play protected video.
+
+### Logs, crashes and process tracking
+
+- Each app's ATL output goes to `$XDG_DATA_HOME/apkstart/atl/logs/<package>.log`, with a header line per launch.
+- When ATL exits within the first few seconds, the launch is reported as failed, with the exit status and the last lines of the log, instead of appearing to do nothing.
+- Running apps are tracked in `$XDG_DATA_HOME/apkstart/atl/run/<package>.pid`, so `apkstart --stop <app>`, the GUI and `--stop-runtime` can stop apps started by another ApkStart process. Stopping signals the whole process group. PIDs are checked against `/proc/<pid>/cmdline` so a reused PID is never signalled.
+- Uninstalling removes the app's data directory, launch link and log.
+
+### Signer pinning
+
 Install records store the APK v2 signer certificate hash. A later install of
 the same package with a different signer is refused before any install command
 runs, which extends Android's update-signature rule to the ATL backend. Use
@@ -59,9 +106,20 @@ which implements per-app title bars, mouse-as-touch and permission gating.
 ATL is GPL software built from source; its licence applies to the built
 runtime, while ApkStart's own code remains MIT.
 
-## Build status on this host
+## Build status
 
-`bionic_translation`, wolfSSL with JNI and `art_standalone` build successfully into the portable prefix. The final ATL Java compilation currently fails on generated `com/android/internal/R.java`, where `javac` reports an unclosed comment. This is an upstream generated-source issue rather than a packaging failure; the script installs the dependencies and leaves the sources and prefix in place so the build can be resumed once upstream fixes the generator.
+Built end to end on Arch Linux (kernel 7.2, GCC from the distribution, JDK 17) on 28 November 2026 with `bionic_translation` 6253dec, `art_standalone` 381138f, ATL b87f045 and wolfSSL 5.8.2:
+
+- `art_standalone` took about 75 minutes on 8 cores; the rest about 20 minutes.
+- `android-translation-layer --help` runs, and `ldd` shows only distribution libraries plus the prefix.
+- F-Droid 2.0.3 (`org.fdroid.fdroid`, x86_64 and ARM libraries) installs through `apkstart --install`, opens its window, and downloads and saves the F-Droid repository index over HTTPS (1,250+ apps) as an ordinary process using about 260 MB.
+- `apkstart --stop org.fdroid.fdroid` from a separate process stops it and removes its PID file; relaunching works.
+
+Build problems found on the way, all handled by the script:
+
+- **Vulkan headers and libsndfile** are needed (by `libandroid` and `libOpenSLES`) but missing from upstream's dependency list.
+- **Homebrew/Linuxbrew on PATH** shadows the system `pkg-config`, which then cannot see distribution libraries. The script drops those directories from `PATH` for the build and uses the system `pkg-config`.
+- **`R.java` "unclosed comment"** (reported on the original build host). `res/framework-res/meson.build` regenerates the committed `src/api-impl/com/android/internal/R.java` whenever an `aapt` binary is on `PATH`, and copies the prebuilt `framework-res.apk` otherwise. On the host above, with no `aapt` anywhere, the committed `R.java` compiled without error. The script removes directories that contain `aapt` from `PATH` for the ATL step and restores the committed `R.java`, so the build takes the path that is known to work. Whether a particular `aapt` version produces the bad comment has not been reproduced here.
 
 The Java toolchain is pinned to JDK 17. JDK 27 rejects the Java 8 target and cannot run the upcall generator; JDK 11 cannot compile the generator; JDK 21 fails while resolving its vendored dependencies. JDK 17 is the only version that reaches the generated-source failure.
 

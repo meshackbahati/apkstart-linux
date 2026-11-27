@@ -9,7 +9,8 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');
 const { parseApk } = require('./apk');
-const { readSigner } = require('./apksig');
+const { verifyV2 } = require('./apksig');
+const atlcompat = require('./atlcompat');
 const { ZipFile } = require('./zip');
 const { iconToIco, writeShortcut, removeShortcut, safeFileName, shortcutExt } = require('./shortcut');
 
@@ -172,7 +173,7 @@ class Installer {
     return rt;
   }
 
-  async install(filePath, onProgress = () => {}) {
+  async install(filePath, onProgress = () => {}, opts = {}) {
     onProgress({ stage: 'parse', message: '正在解析 APK…' });
     let meta;
     let bundle = null;
@@ -190,19 +191,50 @@ class Installer {
 
     // Android's package manager rejects updates signed by a different key.
     // Keep the same guarantee in our own metadata so it also holds for ATL,
-    // which has no package manager. Unsigned or unparseable packages are left
-    // to the backend: they were already accepted before this check existed.
-    let signerHash = null;
-    if (!bundle) {
-      try {
-        const signer = readSigner(filePath);
-        if (signer) signerHash = signer.certSha256;
-      } catch (_) { /* leave the backend to decide */ }
-    }
+    // which has no package manager. Only a cryptographically verified v2
+    // signature (signature over the signed data plus the APK content digest)
+    // can set or satisfy the pin: reading the certificate alone would let a
+    // repackaged APK copy the original certificate, or drop the signature.
     const installedBefore = store.getApp(meta.package);
-    if (installedBefore && installedBefore.signer && signerHash
-        && installedBefore.signer !== signerHash) {
+    const pinned = installedBefore && installedBefore.signer;
+    // Every part of a split bundle can carry code, and Android requires all of
+    // them to be signed with the same certificate, so verify each one.
+    let signerHash = null;
+    const targets = bundle ? (bundle.files || []).filter(Boolean) : [filePath];
+    if (!targets.length && pinned) {
+      throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，但找不到可校验的安装包，拒绝覆盖。`);
+    }
+    const certs = new Set();
+    let unverified = null;
+    for (const t of targets) {
+      let v;
+      try { v = verifyV2(t); } catch (e) { v = { ok: false, reason: e.message }; }
+      if (!v.ok) { unverified = `${path.basename(t)}: ${v.reason}`; break; }
+      certs.add(v.certSha256);
+    }
+    if (unverified && pinned) {
+      throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，新安装包的 v2 签名无法验证（${unverified}），拒绝覆盖。`);
+    }
+    if (!unverified && certs.size > 1) {
+      throw new Error(`签名不一致：${meta.package} 的拆分安装包由不同的密钥签名，拒绝安装。`);
+    }
+    if (!unverified && certs.size === 1) signerHash = [...certs][0];
+    if (pinned && signerHash !== pinned) {
       throw new Error(`签名不一致：${meta.package} 已安装版本由另一把密钥签名，拒绝覆盖。`);
+    }
+
+    // ATL runs native code directly and has no Play services: check offline,
+    // before anything is copied, whether this APK can work at all.
+    let atlCompat = null;
+    const backendId = this.runtime && this.runtime.backend && this.runtime.backend.id;
+    if (backendId === 'atl') {
+      atlCompat = bundle && bundle.files && bundle.files.length
+        ? atlcompat.checkApk(bundle.files[0])
+        : atlcompat.checkApk(filePath);
+      onProgress({ stage: 'atl-compat', message: atlcompat.describe(atlCompat), compat: atlCompat });
+      if (atlCompat.verdict === 'blocked' && !opts.force) {
+        throw new Error(`${atlcompat.describe(atlCompat)}\nUse the Waydroid or built-in backend for this app, or install anyway with --force.`);
+      }
     }
 
     // 50GB 级游戏：先核对模拟器数据盘剩余空间，而不是装到一半才报
@@ -248,14 +280,14 @@ class Installer {
         await this.ensureCompatImage(onProgress);
         rt = await this.switchToCompat(onProgress);
       }
-      return await this.finishInstall(rt, meta, filePath, bundle, onProgress);
+      return await this.finishInstall(rt, meta, filePath, bundle, onProgress, { signerHash, atlCompat });
     } finally {
       if (bundle) bundle.cleanup();
     }
   }
 
   /** 安装本体 + 落盘元数据 + 快捷方式；失败时带一次自动修复重试 */
-  async finishInstall(rt, meta, filePath, bundle, onProgress) {
+  async finishInstall(rt, meta, filePath, bundle, onProgress, { signerHash = null, atlCompat = null } = {}) {
     const client = rt.client;
     const existing = store.getApp(meta.package);
     // 装完之后旧 quickboot 快照里的磁盘状态就过期了，留着会导致「装好的应用重启后又不见了」
@@ -363,6 +395,7 @@ class Installer {
       // 重新装过 = 权限表可能被重置，清掉「已授过」缓存，下次启动重新核一遍
       permGranted: false,
       signer: signerHash || (existing && existing.signer) || null,
+      atlCompat: atlCompat ? { verdict: atlCompat.verdict, issues: atlCompat.issues.map((i) => i.id) } : (existing && existing.atlCompat) || null,
     };
 
     store.upsertApp(app);

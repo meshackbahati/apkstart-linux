@@ -52,6 +52,7 @@ const HELP = `ApkStart - run Android applications on the Linux desktop
 
 Usage:
   apkstart --install <file.apk> [...]   install one or more APK files
+                                        (--force installs even if ATL reports it cannot run)
   apkstart --version                    print the version
   apkstart --list                       list installed applications
   apkstart --game <app>                 launch a game with the universal controller
@@ -66,6 +67,7 @@ Usage:
   apkstart --controls on|off|status|edit  manage keyboard-to-touch game mapping
   apkstart --stop-runtime               stop the runtime and free its memory
   apkstart verify <file.apk> [--cert SHA256]  verify an APK's v2 signature
+  apkstart atl-check <file.apk> [--json]      check offline whether an APK can run on ATL
   apkstart --gui                        open the graphical interface
   apkstart --help                       show this message
 
@@ -75,7 +77,9 @@ Examples:
   apkstart org.fdroid.fdroid
 `;
 
-async function install(files) {
+async function install(argv) {
+  const force = argv.includes('--force');
+  const files = argv.filter((a) => a !== '--force');
   if (!files.length) throw new Error('--install needs at least one APK path');
   const { installer } = make();
   for (const raw of files) {
@@ -86,7 +90,7 @@ async function install(files) {
     const meta = parseApk(file);
     await installer.install(file, (p) => {
       if (p && p.message) process.stdout.write(`  ${p.message}\n`);
-    });
+    }, { force });
     process.stdout.write(`Installed ${meta.package}\n`);
   }
 }
@@ -248,6 +252,19 @@ function gui() {
     process.stdout.write(`${path.basename(file)}: ${result.ok ? 'signature valid' : `signature invalid (${result.reason})`}\n`);
     if (signer) process.stdout.write(`signer ${signer.scheme}: ${signer.certSha256}\n`);
     if (!result.ok) process.exitCode = 1;
+    return undefined;
+  }
+  if (cmd === 'atl-check') {
+    const files = argv.slice(1).filter((a) => a !== '--json');
+    if (!files.length) throw new Error('atl-check needs one or more APK paths');
+    const atlcompat = require(path.join(ROOT, 'src/core/atlcompat'));
+    const results = files.map((f) => atlcompat.checkApk(path.resolve(f.replace(/^~/, os.homedir()))));
+    if (argv.includes('--json')) {
+      process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);
+    } else {
+      for (const r of results) process.stdout.write(`${path.basename(r.file)}\n${atlcompat.describe(r)}\n\n`);
+    }
+    if (results.some((r) => r.verdict === 'blocked' || r.verdict === 'unknown')) process.exitCode = 1;
     return undefined;
   }
   if (cmd === 'init') return init(argv.slice(1));
