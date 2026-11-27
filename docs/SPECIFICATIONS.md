@@ -1,6 +1,6 @@
 # Specifications and limitations
 
-This document describes the current Linux build (version 0.6.4) and its measured limits.
+This document describes the current Linux build (version 0.6.5) and its measured limits.
 
 ## Host requirements
 

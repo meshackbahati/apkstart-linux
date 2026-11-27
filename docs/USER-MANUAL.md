@@ -1,6 +1,6 @@
 # ApkStart 产品使用手册与问题解决方案
 
-> 版本：v0.6.4 · 上游手册对应：Windows 10/11 x64 · 更新：2026-11-27
+> 版本：v0.6.5 · 上游手册对应：Windows 10/11 x64 · 更新：2026-11-27
 >
 > **Linux 用户请先阅读仓库根目录的 README.md，以及 docs 目录下的 LINUX.md。**
 > 本手册保留自上游项目，其中 Windows 快捷方式、注册表、WHPX/AEHD 与 PowerShell 相关章节不适用于本分支；

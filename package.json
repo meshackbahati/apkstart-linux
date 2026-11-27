@@ -1,7 +1,7 @@
 {
   "name": "apkstart",
   "productName": "ApkStart",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Run Android APKs as desktop windows on Linux with KVM acceleration, Waydroid/ATL backends and low memory use",
   "main": "src/main.js",
   "bin": {

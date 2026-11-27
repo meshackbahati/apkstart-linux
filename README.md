@@ -83,7 +83,7 @@ builds an AppImage and a `.deb`, verifies `SHA256SUMS`, then publishes the
 assets. Tag a version from `package.json` to trigger it:
 
 ```bash
-git tag v0.6.4 && git push origin v0.6.4
+git tag v0.6.5 && git push origin v0.6.5
 ```
 
 ## Development

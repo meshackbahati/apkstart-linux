@@ -84,7 +84,7 @@ const DEBUG_SUMMARY = { total: 2, errors: 1, warns: 1, infos: 0, health: 'error'
 const EMPTY = {};
 const OK = { ok: true };
 const fixture = {
-  info: () => Promise.resolve({ version: '0.6.4', isDev: true, dataDir: '/home/user/.local/share/apkstart',
+  info: () => Promise.resolve({ version: '0.6.5', isDev: true, dataDir: '/home/user/.local/share/apkstart',
     runtimeDir: '/home/user/.local/share/apkstart/runtime' }),
   getSettings: () => Promise.resolve(SETTINGS),
   setSettings: (patch) => {
@@ -113,7 +113,7 @@ const fixture = {
   autodebugConfig: () => Promise.resolve(SETTINGS.debug),
   updateCheck: () => Promise.resolve({ ok: true, current: '0.6.3', hasUpdate: false, sources: [] }),
   assocStatus: () => Promise.resolve({ registered: false }),
-  appInfo: () => Promise.resolve({ version: '0.6.4' }),
+  appInfo: () => Promise.resolve({ version: '0.6.5' }),
   android: {}, keymap: {}, shell: {},
 };
 // The preload bridge names are methods, not IPC channels; fill the rest with
