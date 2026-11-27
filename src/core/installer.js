@@ -197,18 +197,28 @@ class Installer {
     // repackaged APK copy the original certificate, or drop the signature.
     const installedBefore = store.getApp(meta.package);
     const pinned = installedBefore && installedBefore.signer;
+    // Every part of a split bundle can carry code, and Android requires all of
+    // them to be signed with the same certificate, so verify each one.
     let signerHash = null;
-    const target = bundle ? (bundle.files && bundle.files[0]) : filePath;
-    if (target) {
-      let v;
-      try { v = verifyV2(target); } catch (e) { v = { ok: false, reason: e.message }; }
-      if (v.ok) signerHash = v.certSha256;
-      if (pinned && !v.ok) {
-        throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，新安装包的 v2 签名无法验证（${v.reason}），拒绝覆盖。`);
-      }
-    } else if (pinned) {
+    const targets = bundle ? (bundle.files || []).filter(Boolean) : [filePath];
+    if (!targets.length && pinned) {
       throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，但找不到可校验的安装包，拒绝覆盖。`);
     }
+    const certs = new Set();
+    let unverified = null;
+    for (const t of targets) {
+      let v;
+      try { v = verifyV2(t); } catch (e) { v = { ok: false, reason: e.message }; }
+      if (!v.ok) { unverified = `${path.basename(t)}: ${v.reason}`; break; }
+      certs.add(v.certSha256);
+    }
+    if (unverified && pinned) {
+      throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，新安装包的 v2 签名无法验证（${unverified}），拒绝覆盖。`);
+    }
+    if (!unverified && certs.size > 1) {
+      throw new Error(`签名不一致：${meta.package} 的拆分安装包由不同的密钥签名，拒绝安装。`);
+    }
+    if (!unverified && certs.size === 1) signerHash = [...certs][0];
     if (pinned && signerHash !== pinned) {
       throw new Error(`签名不一致：${meta.package} 已安装版本由另一把密钥签名，拒绝覆盖。`);
     }
@@ -270,14 +280,14 @@ class Installer {
         await this.ensureCompatImage(onProgress);
         rt = await this.switchToCompat(onProgress);
       }
-      return await this.finishInstall(rt, meta, filePath, bundle, onProgress);
+      return await this.finishInstall(rt, meta, filePath, bundle, onProgress, { signerHash, atlCompat });
     } finally {
       if (bundle) bundle.cleanup();
     }
   }
 
   /** 安装本体 + 落盘元数据 + 快捷方式；失败时带一次自动修复重试 */
-  async finishInstall(rt, meta, filePath, bundle, onProgress) {
+  async finishInstall(rt, meta, filePath, bundle, onProgress, { signerHash = null, atlCompat = null } = {}) {
     const client = rt.client;
     const existing = store.getApp(meta.package);
     // 装完之后旧 quickboot 快照里的磁盘状态就过期了，留着会导致「装好的应用重启后又不见了」
