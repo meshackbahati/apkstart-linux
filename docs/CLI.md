@@ -19,6 +19,7 @@ ApkStart is available as a global `apkstart` command after `npm install -g .` or
 | `apkstart --backend <id>` | Select `waydroid` (recommended on Linux), `builtin` or `atl` |
 | `apkstart init [--backend <id>]` | Install and configure the dependencies of that backend |
 | `apkstart init --check` | Report what is installed without changing anything |
+| `apkstart verify <file.apk> [--cert SHA256]` | Verify APK v2 signature and optionally pin the signer certificate |
 | `apkstart install` | Install the command globally, register file association and initialise |
 | `apkstart --start-runtime` / `--stop-runtime` | Start or stop the selected runtime |
 | `apkstart --gui` | Open the graphical window |

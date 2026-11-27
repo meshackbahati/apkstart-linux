@@ -65,6 +65,7 @@ Usage:
   apkstart --start-runtime              start the selected runtime now
   apkstart --controls on|off|status|edit  manage keyboard-to-touch game mapping
   apkstart --stop-runtime               stop the runtime and free its memory
+  apkstart verify <file.apk> [--cert SHA256]  verify an APK's v2 signature
   apkstart --gui                        open the graphical interface
   apkstart --help                       show this message
 
@@ -234,6 +235,19 @@ function gui() {
     const { runtime } = make();
     const ok = await runtime.stop();
     process.stdout.write(ok ? 'Runtime stopped\n' : 'Runtime was not running\n');
+    return undefined;
+  }
+  if (cmd === 'verify') {
+    const file = argv[1] && path.resolve(argv[1].replace(/^~/, os.homedir()));
+    if (!file || !fs.existsSync(file)) throw new Error('verify needs an existing APK path');
+    const { readSigner, verifyV2 } = require(path.join(ROOT, 'src/core/apksig'));
+    const at = argv.indexOf('--cert');
+    const expected = at >= 0 ? argv[at + 1] : null;
+    const signer = readSigner(file);
+    const result = verifyV2(file, expected);
+    process.stdout.write(`${path.basename(file)}: ${result.ok ? 'signature valid' : `signature invalid (${result.reason})`}\n`);
+    if (signer) process.stdout.write(`signer ${signer.scheme}: ${signer.certSha256}\n`);
+    if (!result.ok) process.exitCode = 1;
     return undefined;
   }
   if (cmd === 'init') return init(argv.slice(1));

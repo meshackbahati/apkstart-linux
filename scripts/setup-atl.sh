@@ -76,9 +76,18 @@ ln -sfn "$ATL_ROOT/lib/libwolfssl.so" art_standalone/out/host/linux-x86/lib64/li
 # The generated pkg-config file hard-codes the build-time prefix.
 sed -i "s|^prefix=.*|prefix=$ATL_ROOT|" "$ATL_ROOT/lib/pkgconfig/art-standalone.pc"
 
+# ATL is GPL software and is built from source rather than vendored into this
+# repository. The maintained fork carries per-app window, input and permission
+# hooks; allow the builder to pin it without changing this script.
+ATL_REPO="${APKSTART_ATL_REPO:-https://gitlab.com/android_translation_layer/android_translation_layer.git}"
+ATL_REF="${APKSTART_ATL_COMMIT:-}"
 if [ ! -d android_translation_layer ]; then
-  say "Fetching ATL"
-  run git clone https://gitlab.com/android_translation_layer/android_translation_layer.git
+  say "Fetching ATL from $ATL_REPO"
+  run git clone "$ATL_REPO"
+fi
+if [ -n "$ATL_REF" ]; then
+  say "Pinning ATL to $ATL_REF"
+  run git -C android_translation_layer checkout "$ATL_REF"
 fi
 say "Installing ATL into the portable prefix"
 (

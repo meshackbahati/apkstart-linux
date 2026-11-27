@@ -46,6 +46,7 @@ Enable **Associate .apk files** in settings, then double-click an APK. See
 - One window per app, native keyboard and mouse input.
 - Three backends, selectable with `apkstart --backend <id>`.
 - Configurable DNS presets: domestic, Cloudflare, Google, or off.
+- APK v2 signature verification and update-signer checks (`apkstart verify`).
 - Shared folder sync between `~/ApkStartShared` and `/sdcard/ApkStartShared`.
 - Hardware preflight, driver patches and periodic auto-check with one-click fixes.
 

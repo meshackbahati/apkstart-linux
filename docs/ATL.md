@@ -31,7 +31,33 @@ apkstart --install /path/to/app.apk
 apkstart app-name
 ```
 
-The backend passes the cached APK path to ATL and translates the launch activity into ATL's slash-separated form. Application data is maintained by ATL under its own data directory.
+The backend builds the launch command from ATL's own conventions. The cached
+APK is exposed through a stable `<package>.apk` symlink in
+`$XDG_DATA_HOME/apkstart/atl/launch`, because ATL derives its data directory
+from the APK file name and ApkStart's cache uses a versioned name. The child
+receives `ANDROID_APP_DATA_DIR`, a window size (`-w` / `-h`, default 1200×850),
+an SDK level derived from `minSdk` and `targetSdk` (`--sdk-int`, 21–36), a
+stable `--gapplication-app-id`, and the system Java trust store when present.
+Split APK parts are passed after the base package.
+
+Per-app overrides live in `settings.atl[<package>]` and may contain `size`
+(`WxH`, 200–10000 per axis), `sdk` (21–36), `titlebar`, `mouseAsTouch` and
+`deniedPermissions`. The last three require the maintained ATL fork; vanilla
+ATL ignores those environment variables. They are harmless on vanilla builds.
+
+Install records store the APK v2 signer certificate hash. A later install of
+the same package with a different signer is refused before any install command
+runs, which extends Android's update-signature rule to the ATL backend. Use
+`apkstart verify <file.apk> [--cert SHA256]` to check a package manually.
+
+### Source selection
+
+`scripts/setup-atl.sh` fetches vanilla ATL by default. Set
+`APKSTART_ATL_REPO` and optionally `APKSTART_ATL_COMMIT` to build a pinned
+fork, for example the maintained `Jimbambuli/android_translation_layer` fork
+which implements per-app title bars, mouse-as-touch and permission gating.
+ATL is GPL software built from source; its licence applies to the built
+runtime, while ApkStart's own code remains MIT.
 
 ## Build status on this host
 

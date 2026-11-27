@@ -9,6 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');
 const { parseApk } = require('./apk');
+const { readSigner } = require('./apksig');
 const { ZipFile } = require('./zip');
 const { iconToIco, writeShortcut, removeShortcut, safeFileName, shortcutExt } = require('./shortcut');
 
@@ -187,6 +188,23 @@ class Installer {
       meta: { label: meta.label, package: meta.package, versionName: meta.versionName },
     });
 
+    // Android's package manager rejects updates signed by a different key.
+    // Keep the same guarantee in our own metadata so it also holds for ATL,
+    // which has no package manager. Unsigned or unparseable packages are left
+    // to the backend: they were already accepted before this check existed.
+    let signerHash = null;
+    if (!bundle) {
+      try {
+        const signer = readSigner(filePath);
+        if (signer) signerHash = signer.certSha256;
+      } catch (_) { /* leave the backend to decide */ }
+    }
+    const installedBefore = store.getApp(meta.package);
+    if (installedBefore && installedBefore.signer && signerHash
+        && installedBefore.signer !== signerHash) {
+      throw new Error(`签名不一致：${meta.package} 已安装版本由另一把密钥签名，拒绝覆盖。`);
+    }
+
     // 50GB 级游戏：先核对模拟器数据盘剩余空间，而不是装到一半才报
     // INSTALL_INSUFFICIENT_STORAGE（用户看到的是「装了很久然后失败」）。
     try {
@@ -344,6 +362,7 @@ class Installer {
       pinned: existing ? !!existing.pinned : false,
       // 重新装过 = 权限表可能被重置，清掉「已授过」缓存，下次启动重新核一遍
       permGranted: false,
+      signer: signerHash || (existing && existing.signer) || null,
     };
 
     store.upsertApp(app);

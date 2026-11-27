@@ -125,6 +125,11 @@ const DEFAULT_SETTINGS = {
     // 每应用的按键映射表：{ "com.example.game": [{key:'w',action:'tap',x:0.15,y:0.75}, ...] }
     keymaps: {},
   },
+  // Per-app ATL overrides keyed by package: { size: '1200x850', sdk: 34,
+  // titlebar: 'atl', mouseAsTouch: true, deniedPermissions: ['camera'] }.
+  // Only the ATL backend reads this map; other backends ignore it.
+  atl: {},
+
   runtime: {
     dir: '',                 // 空 = %APPDATA%\apkstart\runtime
     qemuUrl: '',             // 手动指定 QEMU 安装包地址

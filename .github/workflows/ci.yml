@@ -28,6 +28,9 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
+      - name: Version pin check
+        run: npm run check:pins
+
       - name: Run tests
         run: npm test
 
