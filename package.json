@@ -7,7 +7,7 @@
   "bin": {
     "apkstart": "bin/apkstart.js"
   },
-  "author": "meshackbahati",
+  "author": "meshackbahati <bahatikylemeshack@gmail.com>",
   "contributors": [
     "RoutineMiku (original author, https://github.com/RoutineMiku/apkstart)"
   ],
