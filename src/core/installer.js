@@ -9,7 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');
 const { parseApk } = require('./apk');
-const { readSigner } = require('./apksig');
+const { verifyV2 } = require('./apksig');
 const atlcompat = require('./atlcompat');
 const { ZipFile } = require('./zip');
 const { iconToIco, writeShortcut, removeShortcut, safeFileName, shortcutExt } = require('./shortcut');
@@ -191,18 +191,25 @@ class Installer {
 
     // Android's package manager rejects updates signed by a different key.
     // Keep the same guarantee in our own metadata so it also holds for ATL,
-    // which has no package manager. Unsigned or unparseable packages are left
-    // to the backend: they were already accepted before this check existed.
-    let signerHash = null;
-    if (!bundle) {
-      try {
-        const signer = readSigner(filePath);
-        if (signer) signerHash = signer.certSha256;
-      } catch (_) { /* leave the backend to decide */ }
-    }
+    // which has no package manager. Only a cryptographically verified v2
+    // signature (signature over the signed data plus the APK content digest)
+    // can set or satisfy the pin: reading the certificate alone would let a
+    // repackaged APK copy the original certificate, or drop the signature.
     const installedBefore = store.getApp(meta.package);
-    if (installedBefore && installedBefore.signer && signerHash
-        && installedBefore.signer !== signerHash) {
+    const pinned = installedBefore && installedBefore.signer;
+    let signerHash = null;
+    const target = bundle ? (bundle.files && bundle.files[0]) : filePath;
+    if (target) {
+      let v;
+      try { v = verifyV2(target); } catch (e) { v = { ok: false, reason: e.message }; }
+      if (v.ok) signerHash = v.certSha256;
+      if (pinned && !v.ok) {
+        throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，新安装包的 v2 签名无法验证（${v.reason}），拒绝覆盖。`);
+      }
+    } else if (pinned) {
+      throw new Error(`签名校验失败：${meta.package} 已绑定签名证书，但找不到可校验的安装包，拒绝覆盖。`);
+    }
+    if (pinned && signerHash !== pinned) {
       throw new Error(`签名不一致：${meta.package} 已安装版本由另一把密钥签名，拒绝覆盖。`);
     }
 
