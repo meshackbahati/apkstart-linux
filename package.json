@@ -56,7 +56,7 @@
     "assoc:on": "node scripts/assoc.js on",
     "assoc:off": "node scripts/assoc.js off",
     "test:boot": "node test/boot-test.js",
-    "pack:linux": "electron-builder --linux AppImage --config electron-builder.yml",
+    "pack:linux": "electron-builder --linux AppImage --publish never --config electron-builder.yml",
     "icons": "electron build/build-icons.js",
     "shots": "electron build/store-shots.js",
     "pack:full": "node build/pack.js --full",
