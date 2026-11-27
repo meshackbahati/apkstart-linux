@@ -337,7 +337,9 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); 
   });
 
   await test('未安装系统时 ensure 返回 needsSetup', async () => {
-    store.saveSettings({ runtime: { installed: false }, engine: { mode: 'builtin' } });
+    // Pin the backend so this assertion tests the built-in runtime path even
+    // when the host has an initialised Waydroid installation.
+    store.saveSettings({ runtime: { installed: false, backend: 'builtin' }, engine: { mode: 'builtin' } });
     const rt = new Runtime(TMP);
     // 用假 adb 保证 isOnline 快速失败
     const r = await rt.ensure({ onLog: () => {} });

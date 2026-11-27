@@ -17,14 +17,19 @@
  * 读设置、读残留配置、导入旧 settings.json 都不会再切到别的底座。
  */
 
+const fs = require('fs');
+const path = require('path');
 const { Backend, CAPS } = require('./base');
 const { BuiltinBackend } = require('./builtin');
 const { WaydroidBackend } = require('./waydroid');
 const { AtlBackend } = require('./atl');
 
-// builtin remains the default. Waydroid offers broad compatibility in a
-// container; ATL runs compatible APKs as native Linux processes with far less
-// memory. Neither is selected automatically.
+// Waydroid is the recommended Linux backend: each app opens as its own native
+// window, the container shares the host kernel (about 0.9 GB resident) and it
+// uses the host's Mesa graphics stack. When no backend is chosen explicitly,
+// Linux picks Waydroid as soon as it is installed and initialised
+// (`apkstart init --backend waydroid`); until then builtin keeps working out
+// of the box. ATL is experimental and is only used when selected.
 const REGISTRY = [
   BuiltinBackend,
   WaydroidBackend,
@@ -58,8 +63,26 @@ function describe() {
  * @param {object} o { appRoot, settings, runtime, store, log, id }
  * @returns {{ backend: Backend, Cls: Function, id: string }}
  */
-function create({ appRoot, runtime, store, log, id: forced, settings } = {}) {
-  const wanted = forced || (settings && settings.runtime && settings.runtime.backend) || ONLY;
+/**
+ * Is Waydroid installed and initialised on this machine? Cheap, synchronous,
+ * and side-effect free: it only looks for the binary and the system image.
+ */
+function waydroidReady({ platform = process.platform, env = process.env, exists = fs.existsSync } = {}) {
+  if (platform !== 'linux') return false;
+  const dirs = String(env.PATH || '').split(path.delimiter).filter(Boolean);
+  const hasBinary = dirs.some((d) => exists(path.join(d, 'waydroid')));
+  const hasImage = ['/var/lib/waydroid/images/system.img', '/usr/share/waydroid-extra/images/system.img']
+    .some((f) => exists(f));
+  return hasBinary && hasImage;
+}
+
+/** Backend used when the settings name none: Waydroid on Linux when ready, otherwise builtin. */
+function defaultId(probe = waydroidReady) {
+  return probe() ? 'waydroid' : ONLY;
+}
+
+function create({ appRoot, runtime, store, log, id: forced, settings, probe } = {}) {
+  const wanted = forced || (settings && settings.runtime && settings.runtime.backend) || defaultId(probe);
   const id = byId(wanted) ? wanted : ONLY;
   const Cls = byId(id) || BuiltinBackend;
   const backend = new Cls(appRoot, { runtime, store, log });
@@ -70,10 +93,10 @@ function create({ appRoot, runtime, store, log, id: forced, settings } = {}) {
  * 自动挑选底座。现在只有一个，永远返回 builtin，不做任何探测：
  * 探测本身就会去碰第三方模拟器的目录 / 注册表，那正是要去掉的行为。
  */
-async function autoPick() {
-  return { id: ONLY, reason: 'builtin-only' };
+async function autoPick(probe = waydroidReady) {
+  return probe() ? { id: 'waydroid', reason: 'waydroid-ready' } : { id: ONLY, reason: 'builtin-fallback' };
 }
 
 module.exports = {
-  REGISTRY, ONLY, CAPS, byId, describe, create, autoPick, Backend,
+  REGISTRY, ONLY, CAPS, byId, describe, create, autoPick, waydroidReady, defaultId, Backend,
 };

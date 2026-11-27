@@ -57,10 +57,13 @@ function touch(dir, rel, bytes = 8) {
     assert.deepEqual(backends.describe().map((d) => d.id), ['builtin', 'waydroid', 'atl']);
   });
 
-  test('任何残留的 mode 都只会创建 builtin（mumu / fydeos / attach / 乱填）', () => {
+  test('残留的 mode 不会创建第三方底座；Waydroid 未就绪时回落 builtin', () => {
+    // Pass an explicit probe so the assertion does not depend on whether the
+    // test host happens to have an initialised Waydroid installation.
     for (const mode of ['mumu', 'fydeos', 'attach', 'ldplayer', 'whatever', '']) {
       const made = backends.create({
         appRoot: ROOT, settings: { engine: { mode } }, store, log: () => {},
+        probe: () => false,
       });
       assert.equal(made.id, 'builtin', `mode=${mode} 却创建了 ${made.id}`);
       assert.equal(made.backend.constructor.id, 'builtin', '实例类型不是 BuiltinBackend');
@@ -74,8 +77,8 @@ function touch(dir, rel, bytes = 8) {
     assert.equal(made.id, 'builtin', '显式 id=mumu 仍然被接受了');
   });
 
-  test('自动挑选不再探测任何外部运行时', async () => {
-    // 同步断言：autoPick 必须是「直接返回 builtin」，源码里不许出现 probe()
+  test('自动挑选不探测任何第三方模拟器', async () => {
+    // 同步断言：只允许探测本机 Waydroid 是否就绪，源码里不许出现第三方 probe()
     const src = read('src', 'core', 'backends', 'index.js');
     assert(!/\.probe\(/.test(src), '注册表仍在探测外部模拟器');
     assert(!/mumu|fydeos|ldplayer|bluestacks/i.test(src.replace(/[\s\S]*?const REGISTRY[\s\S]*?\];/, '')),

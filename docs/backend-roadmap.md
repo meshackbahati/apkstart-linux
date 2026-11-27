@@ -97,7 +97,7 @@ PhoenixOS 基本已停止维护。**不作为产品方向。**
 
 ## 当前状态更新（v0.6.3 之后）
 
-三个后端已经注册在 `src/core/backends/index.js`：`builtin` 仍是默认的自包含 QEMU；`waydroid` 在 Linux 上可选，实测约 0.9 GB 常驻内存，支持绝大多数应用与游戏，但 1.6.3 的多窗口模式共享一块 Android 显示，窗口缩放和关闭行为受上游限制（waydroid/waydroid#2470，修复 PR android_hardware_waydroid#93 不覆盖多窗口）。`atl` 为实验性后端，把兼容的 APK 作为普通 Linux 进程运行，内存和启动速度最优，但兼容性按应用逐个实现，且游戏图形路径尚未成熟。
+三个后端已经注册在 `src/core/backends/index.js`：`waydroid` 是 Linux 上的推荐后端（安装并初始化后自动选用，每个应用是独立的原生窗口）；`builtin` 是自包含 QEMU 兜底，实测约 0.9 GB 常驻内存，支持绝大多数应用与游戏，但 1.6.3 的多窗口模式共享一块 Android 显示，窗口缩放和关闭行为受上游限制（waydroid/waydroid#2470，修复 PR android_hardware_waydroid#93 不覆盖多窗口）。`atl` 为实验性后端，把兼容的 APK 作为普通 Linux 进程运行，内存和启动速度最优，但兼容性按应用逐个实现，且游戏图形路径尚未成熟。
 
 `apkstart init --backend <id>` 按所选后端安装依赖，命令与初始化流程见 [CLI.md](CLI.md)。Waydroid 的触摸游戏通过 key2touch 实现键盘/鼠标到触控的映射，映射只在游戏运行期间开启。
 

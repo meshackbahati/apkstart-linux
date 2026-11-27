@@ -8,7 +8,26 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
+const net = require('net');
 const { URL } = require('url');
+
+// Node 20+ tries every resolved address in turn ("happy eyeballs") but gives each
+// one only 250 ms by default. On slow links, or networks that refuse IPv6, every
+// attempt times out and the download fails with an empty AggregateError message.
+// Give each address a realistic window instead.
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === 'function') {
+  try { net.setDefaultAutoSelectFamilyAttemptTimeout(5000); } catch (_) { /* older runtime */ }
+}
+
+/** Readable message for any error, including AggregateError whose .message is empty. */
+function errText(e) {
+  if (!e) return 'unknown error';
+  if (e.message) return e.message;
+  if (Array.isArray(e.errors) && e.errors.length) {
+    return e.errors.map((x) => (x && (x.message || x.code)) || String(x)).join('; ');
+  }
+  return e.code || String(e);
+}
 
 const UA = 'ApkStart/0.2 (Windows; +https://github.com/apkstart)';
 
@@ -60,7 +79,7 @@ async function head(url) {
       type: res.headers['content-type'] || '',
     };
   } catch (e) {
-    return { status: 0, size: 0, error: e.message };
+    return { status: 0, size: 0, error: errText(e) };
   }
 }
 
@@ -397,7 +416,7 @@ async function downloadAny(urls, dest, opt = {}) {
       const r = await download(u, dest, opt);
       return { ...r, url: u };
     } catch (e) {
-      errors.push(`${u} → ${e.message}`);
+      errors.push(`${u} → ${errText(e)}`);
       discardPartial(dest);
     }
   }
@@ -653,7 +672,7 @@ async function downloadAnyParallel(urls, dest, opt = {}) {
       const r = await downloadParallel(u, dest, opt);
       return { ...r, url: u };
     } catch (e) {
-      errors.push(`${u} → ${e.message}`);
+      errors.push(`${u} → ${errText(e)}`);
       discardPartial(dest);
     }
   }

@@ -105,13 +105,31 @@ function makeBackend(overrides = {}) {
 
   console.log('\n[Backend registry]');
 
-  await test('explicit selection returns Waydroid, default stays builtin', () => {
+  await test('explicit selection returns Waydroid; without Waydroid the default is builtin', () => {
     const explicit = backends.create({
       appRoot: '/app', settings: { runtime: { backend: 'waydroid' } }, store: {}, log: () => {},
     });
     assert.equal(explicit.id, 'waydroid');
-    const normal = backends.create({ appRoot: '/app', settings: {}, store: {}, log: () => {} });
+    const normal = backends.create({ appRoot: '/app', settings: {}, store: {}, log: () => {}, probe: () => false });
     assert.equal(normal.id, 'builtin');
+  });
+
+  await test('Waydroid is the default once it is installed and initialised', () => {
+    const auto = backends.create({ appRoot: '/app', settings: {}, store: {}, log: () => {}, probe: () => true });
+    assert.equal(auto.id, 'waydroid');
+    const pinned = backends.create({
+      appRoot: '/app', settings: { runtime: { backend: 'builtin' } }, store: {}, log: () => {}, probe: () => true,
+    });
+    assert.equal(pinned.id, 'builtin');
+  });
+
+  await test('waydroidReady needs Linux, the binary and the system image', () => {
+    const env = { PATH: '/usr/bin' };
+    const all = (f) => f === '/usr/bin/waydroid' || f === '/var/lib/waydroid/images/system.img';
+    assert.equal(backends.waydroidReady({ platform: 'linux', env, exists: all }), true);
+    assert.equal(backends.waydroidReady({ platform: 'win32', env, exists: all }), false);
+    assert.equal(backends.waydroidReady({ platform: 'linux', env, exists: (f) => f === '/usr/bin/waydroid' }), false);
+    assert.equal(backends.waydroidReady({ platform: 'linux', env, exists: () => false }), false);
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
