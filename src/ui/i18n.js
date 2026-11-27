@@ -285,6 +285,21 @@
     '发行版': 'release', '通道': 'channel', '源': 'source', '镜像站': 'mirror', '代理': 'proxy',
     '日志': 'logs', '导出': 'export', '导入': 'import', '反馈': 'feedback', '关于': 'about',
     '许可': 'license', '作者': 'author', '官网': 'website', '发布页': 'release page',
+    // Status bar and app grid fragments. The glossary approach translates a
+    // whole sentence only when it has an exact entry; without these terms the
+    // longest-first pass leaves mixed Chinese/English phrases such as
+    // "独立window已Enable", which are hard to read in the English UI.
+    '独立窗口已启用': 'detached window enabled',
+    '运行时已就绪': 'Runtime is ready',
+    '网络正常': 'Network OK',
+    '添加应用': 'Add app',
+    '拖入 APK 即可安装': 'Drop an APK to install',
+    '个应用': ' apps',
+    '下次重启运行时生效': 'Takes effect after the next runtime restart',
+    '下次启动安卓运行时生效': 'Applies on the next Android runtime start',
+    '下次打开应用生效': 'Applies the next time an app opens',
+    '下次打开应用时生效': 'Applies the next time an app opens',
+    '下次打开应用会多花十几秒': 'The next app launch takes a few seconds longer',
   };
 
   const done = new WeakSet();
@@ -300,6 +315,12 @@
     for (const [zh, en] of TERMS) {
       if (out.includes(zh)) out = out.split(zh).join(en);
     }
+    // Reject partial translations. Replacing a few glossary terms in a long
+    // sentence previously produced fragments such as "独立window已Enable",
+    // which are harder to read than the original Chinese. Keep a string in its
+    // source language unless every Chinese character was covered by a term or
+    // an exact dictionary entry.
+    if (/[\u4e00-\u9fff]/.test(out)) return s;
     return out;
   }
 

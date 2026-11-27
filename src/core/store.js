@@ -82,8 +82,11 @@ const DEFAULT_SETTINGS = {
     dataPartitionGB: 0,
     // 渲染分辨率：越低越流畅、越省电；auto = 按加速状态选 720x1280 / 540x960
     renderSize: 'auto',
-    // 网络加速：给模拟器指定国内公共 DNS。安卓默认的 10.0.2.3 要走主机 DNS，
+    // 网络加速：给模拟器指定公共 DNS。安卓默认的 10.0.2.3 要走主机 DNS，
     // VPN / 公司网 / 某些运营商下解析会拖到几百毫秒，视频类应用首屏会明显发卡。
+    // dnsPreset 是 0.6.4 起的新设置（cn / cloudflare / google / off）；fastDns
+    // 保留给旧配置，缺失 dnsPreset 时按它推导，因此升级不需要迁移脚本。
+    dnsPreset: 'cn',
     fastDns: true,
     // Guest system language. The Linux build defaults to the image's native
     // English so application menus are not Chinese; set zh-CN to restore the

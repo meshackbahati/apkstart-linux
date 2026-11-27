@@ -1093,7 +1093,11 @@ function fillSettings(s) {
   if ($('setResourceMode')) $('setResourceMode').value = eng.resourceMode || 'balanced';
   if ($('setRenderSize')) $('setRenderSize').value = eng.renderSize || 'auto';
   if ($('setDataGB')) $('setDataGB').value = String(Number(eng.dataPartitionGB || 0));
-  if ($('setFastDns')) $('setFastDns').checked = eng.fastDns !== false;
+  if ($('setDnsPreset')) {
+    // 0.6.4 前的配置只有布尔 fastDns：true -> cn，false -> off。
+    const legacyOff = eng.fastDns === false;
+    $('setDnsPreset').value = eng.dnsPreset || (legacyOff ? 'off' : 'cn');
+  }
   if ($('setLocale')) $('setLocale').value = eng.locale || 'zh-CN';
   if ($('setChineseIme')) $('setChineseIme').checked = eng.chineseIme !== false;
   if ($('setKeepSnapshot')) $('setKeepSnapshot').checked = eng.keepSnapshot !== false;
@@ -1684,8 +1688,10 @@ function bindSettings() {
   if ($('setRenderSize')) {
     $('setRenderSize').addEventListener('change', (e) => save({ engine: { renderSize: e.target.value } }));
   }
-  if ($('setFastDns')) {
-    $('setFastDns').addEventListener('change', (e) => save({ engine: { fastDns: e.target.checked } }));
+  if ($('setDnsPreset')) {
+    $('setDnsPreset').addEventListener('change', (e) => {
+      save({ engine: { dnsPreset: e.target.value, fastDns: e.target.value !== 'off' } });
+    });
   }
   if ($('setLocale')) {
     $('setLocale').addEventListener('change', async (e) => {

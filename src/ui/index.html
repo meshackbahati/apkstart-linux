@@ -91,7 +91,7 @@
       <span class="sep"></span>
       <span class="status-item" id="statusStats"></span>
       <span class="sep"></span>
-      <a class="status-item powered-link" href="https://github.com/RoutineMiku/apkstart" target="_blank" rel="noopener">Powered by RoutineMiku</a>
+      <a class="status-item powered-link" href="https://github.com/meshackbahati/apkstart-linux" target="_blank" rel="noopener">ApkStart Linux</a>
     </div>
   </footer>
 </main>
@@ -476,12 +476,15 @@
           </div>
           <input type="checkbox" id="setChineseIme" class="switch" />
         </div>
-        <div class="field switch-field">
-          <div>
-            <label>网络加速（推荐）</label>
-            <span class="sub">给安卓指定国内公共 DNS（阿里 / 腾讯）。安卓默认走主机的 DNS，主机挂着 VPN 或走公司网时解析会拖到几百毫秒，视频类应用首屏发慢。内网域名访问异常时可关掉。</span>
-          </div>
-          <input type="checkbox" id="setFastDns" class="switch" />
+        <div class="field">
+          <label for="setDnsPreset">DNS 服务器</label>
+          <select id="setDnsPreset">
+            <option value="cn">国内公共 DNS（阿里 / 腾讯，推荐）</option>
+            <option value="cloudflare">Cloudflare（1.1.1.1）</option>
+            <option value="google">Google（8.8.8.8）</option>
+            <option value="off">关闭 · 沿用主机 DNS</option>
+          </select>
+          <span class="sub">安卓默认通过 10.0.2.3 走主机 DNS，VPN、公司网或某些运营商下解析可能拖到几百毫秒，视频类应用首屏发慢。内网域名必须走主机 DNS 时选「关闭」。下次启动安卓运行时生效。</span>
         </div>
         <div class="field switch-field">
           <div>
@@ -892,7 +895,7 @@
           </div>
           <div class="update-bar" id="updateBar" hidden><i id="updateBarFill"></i></div>
           <span class="sub" id="updateNote">
-            从 GitHub（RoutineMiku/apkstart）获取最新版本；轻量版会下载便携包并自动替换程序文件，
+            从本分支的 GitHub Releases（meshackbahati/apkstart-linux）获取最新版本；更新只替换程序文件，
             运行时、已装应用与快照都不受影响。
           </span>
         </div>
@@ -905,23 +908,19 @@
             <img class="about-logo" src="assets/logo.png" alt="ApkStart Logo" draggable="false" />
           </div>
           <div class="about-qrs">
-            <div class="about-qr">
-              <img src="assets/wechat-qr.jpg" alt="微信公众号二维码" width="112" height="112" />
-              <span class="about-qr-tip">扫码关注公众号</span>
-            </div>
-            <div class="about-qr">
-              <img src="assets/douyin-qr.jpg" alt="抖音二维码" width="112" height="112" />
-              <span class="about-qr-tip">抖音 · 日常MIKU</span>
+            <div class="about-qr" style="width:auto">
+              <span class="about-qr-tip">Linux 分支由 meshackbahati 维护；原始项目由 RoutineMiku 创建。</span>
+              <span class="about-qr-tip">本分支专注于 Linux 桌面、KVM、Waydroid 与 ATL 后端。</span>
             </div>
           </div>
           <div class="about-info">
             <div class="about-name">ApkStart <span class="about-ver" id="aboutVer"></span></div>
-            <p class="note">双击即装的 Windows 安卓应用启动器：APK 安装、桌面快捷方式、独立窗口运行、文件双向互通。</p>
+            <p class="note">Linux 桌面的安卓应用运行器：双击安装 APK，生成 .desktop 入口，每个应用独立窗口，可选 Waydroid / ATL 后端。</p>
             <div class="about-links">
               <button class="btn ghost sm" id="btnOpenManual">打开使用手册（含故障解决方案）</button>
-              <a href="https://github.com/RoutineMiku/apkstart" target="_blank" rel="noopener">GitHub · RoutineMiku/apkstart</a>
-              <a href="https://v.douyin.com/9TIIxVCANig/" target="_blank" rel="noopener">抖音 · @日常MIKU（联系作者）</a>
-              <span class="powered">Powered by <b>RoutineMiku</b></span>
+              <a href="https://github.com/meshackbahati/apkstart-linux" target="_blank" rel="noopener">GitHub · ApkStart Linux</a>
+              <a href="https://github.com/RoutineMiku/apkstart" target="_blank" rel="noopener">上游 · RoutineMiku/apkstart</a>
+              <span class="powered">ApkStart Linux · MIT</span>
             </div>
           </div>
         </div>

@@ -24,6 +24,34 @@ const platform = require('./platform');
 const AVD_NAME = 'apkstart';
 const SNAPSHOT_NAME = 'apkstart';
 
+/**
+ * Public DNS choices exposed in Settings → Performance and resources. Each
+ * preset is a comma-separated list accepted by the emulator's `-dns-server`
+ * flag; `off` deliberately returns an empty string so the guest keeps using
+ * the host resolver through 10.0.2.3, which is required for intranet names.
+ */
+const DNS_PRESETS = {
+  cn: '223.5.5.5,119.29.29.29',
+  cloudflare: '1.1.1.1,1.0.0.1',
+  google: '8.8.8.8,8.8.4.4',
+  off: '',
+};
+
+/**
+ * Resolve the DNS servers to pass to the emulator, preserving compatibility
+ * with configurations written before dnsPreset existed. An unknown preset is
+ * treated as the default rather than silently disabling acceleration, because
+ * the alternative would degrade first-boot networking for every upgraded user.
+ */
+function dnsServersFor(settings) {
+  const eng = settings && settings.engine;
+  if (!eng) return DNS_PRESETS.cn;
+  if (eng.dnsPreset === undefined || eng.dnsPreset === null) {
+    return eng.fastDns === false ? '' : DNS_PRESETS.cn;
+  }
+  return DNS_PRESETS[eng.dnsPreset] ?? DNS_PRESETS.cn;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -688,11 +716,11 @@ class EmulatorEngine {
     const locale = this._guestLocale();
     if (locale) args.push('-change-locale', locale);
     // DNS：安卓默认用 10.0.2.3（转发到主机 DNS）。主机走 VPN / 公司网 / 某些运营商
-    // 时，一次解析能拖到几百毫秒，表现为「页面转圈半天才开始加载」。给一份国内公共
-    // DNS 作为首选，失败时系统仍会回退。用户可在设置里关掉（内网域名场景）。
-    if (this.settings?.engine?.fastDns !== false) {
-      args.push('-dns-server', '223.5.5.5,119.29.29.29');
-    }
+    // 时，一次解析能拖到几百毫秒，表现为「页面转圈半天才开始加载」。给一份公共 DNS
+    // 作为首选，失败时系统仍会回退。设置里可选国内 / Cloudflare / Google / 关闭，
+    // 其中关闭用于内网域名必须走主机 DNS 的场景。
+    const dns = dnsServersFor(this.settings);
+    if (dns) args.push('-dns-server', dns);
     if (lcd) args.push('-skin', `${lcd.w}x${lcd.h}`);
     if (headless) {
       args.push('-no-window');
@@ -1699,4 +1727,4 @@ class EmulatorEngine {
   }
 }
 
-module.exports = { EmulatorEngine, AVD_NAME, SNAPSHOT_NAME };
+module.exports = { EmulatorEngine, AVD_NAME, SNAPSHOT_NAME, DNS_PRESETS, dnsServersFor };
