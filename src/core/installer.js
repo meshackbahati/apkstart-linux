@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const store = require('./store');
 const { parseApk } = require('./apk');
 const { readSigner } = require('./apksig');
+const atlcompat = require('./atlcompat');
 const { ZipFile } = require('./zip');
 const { iconToIco, writeShortcut, removeShortcut, safeFileName, shortcutExt } = require('./shortcut');
 
@@ -172,7 +173,7 @@ class Installer {
     return rt;
   }
 
-  async install(filePath, onProgress = () => {}) {
+  async install(filePath, onProgress = () => {}, opts = {}) {
     onProgress({ stage: 'parse', message: '正在解析 APK…' });
     let meta;
     let bundle = null;
@@ -203,6 +204,20 @@ class Installer {
     if (installedBefore && installedBefore.signer && signerHash
         && installedBefore.signer !== signerHash) {
       throw new Error(`签名不一致：${meta.package} 已安装版本由另一把密钥签名，拒绝覆盖。`);
+    }
+
+    // ATL runs native code directly and has no Play services: check offline,
+    // before anything is copied, whether this APK can work at all.
+    let atlCompat = null;
+    const backendId = this.runtime && this.runtime.backend && this.runtime.backend.id;
+    if (backendId === 'atl') {
+      atlCompat = bundle && bundle.files && bundle.files.length
+        ? atlcompat.checkApk(bundle.files[0])
+        : atlcompat.checkApk(filePath);
+      onProgress({ stage: 'atl-compat', message: atlcompat.describe(atlCompat), compat: atlCompat });
+      if (atlCompat.verdict === 'blocked' && !opts.force) {
+        throw new Error(`${atlcompat.describe(atlCompat)}\nUse the Waydroid or built-in backend for this app, or install anyway with --force.`);
+      }
     }
 
     // 50GB 级游戏：先核对模拟器数据盘剩余空间，而不是装到一半才报
@@ -363,6 +378,7 @@ class Installer {
       // 重新装过 = 权限表可能被重置，清掉「已授过」缓存，下次启动重新核一遍
       permGranted: false,
       signer: signerHash || (existing && existing.signer) || null,
+      atlCompat: atlCompat ? { verdict: atlCompat.verdict, issues: atlCompat.issues.map((i) => i.id) } : (existing && existing.atlCompat) || null,
     };
 
     store.upsertApp(app);

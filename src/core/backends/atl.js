@@ -109,6 +109,7 @@ class AtlClient {
   async startApp(pkg, activity) { return this.backend.launchApp(pkg, activity); }
   async runningPackages() { return this.backend.running(); }
   async clearData(pkg) { return this.backend.clearData(pkg); }
+  async uninstall(pkg) { return this.backend.uninstallApp(pkg); }
   async disposeInput() { /* no persistent shell */ }
 }
 
@@ -135,11 +136,61 @@ class AtlBackend extends Backend {
     const base = (deps.store && deps.store.DATA_DIR) || store.DATA_DIR
       || path.join(os.homedir(), '.local', 'share', 'apkstart');
     this.atlDir = deps.atlDir || path.join(base, 'atl');
+    // How long launchApp waits to catch an immediate crash. Only real
+    // processes need it; injected spawners in tests return at once.
+    this.settleMs = deps.settleMs !== undefined ? deps.settleMs : (deps.spawn ? 0 : 2500);
   }
 
   get caps() { return new Set([CAPS.shutdown]); }
-  running() { return this._running ? [...this._children.keys()] : []; }
   client() { return this._client; }
+
+  get runDir() { return path.join(this.atlDir, 'run'); }
+  get logDir() { return path.join(this.atlDir, 'logs'); }
+  pidFile(pkg) { return path.join(this.runDir, `${safePart(pkg)}.pid`); }
+  logFile(pkg) { return path.join(this.logDir, `${safePart(pkg)}.log`); }
+
+  /**
+   * PID files let a later process (for example `apkstart --stop <app>` or the
+   * GUI after a restart) find and stop apps launched by an earlier one.
+   */
+  _writePid(pkg, pid) {
+    if (!pid) return;
+    try {
+      fs.mkdirSync(this.runDir, { recursive: true });
+      fs.writeFileSync(this.pidFile(pkg), `${pid}\n`);
+    } catch (_) { /* tracking is best effort */ }
+  }
+
+  _clearPid(pkg) {
+    try { fs.unlinkSync(this.pidFile(pkg)); } catch (_) { /* already gone */ }
+  }
+
+  _readPid(pkg) {
+    try {
+      const n = Number(fs.readFileSync(this.pidFile(pkg), 'utf8').trim());
+      return Number.isInteger(n) && n > 1 ? n : 0;
+    } catch (_) { return 0; }
+  }
+
+  /** Alive and still the ATL process for this package (guards against PID reuse). */
+  _pidAlive(pid, pkg) {
+    if (!pid) return false;
+    try { process.kill(pid, 0); } catch (e) { if (e.code !== 'EPERM') return false; }
+    try {
+      const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+      return cmd.includes(`${safePart(pkg)}.apk`);
+    } catch (_) {
+      return process.platform !== 'linux';
+    }
+  }
+
+  /** Last lines of an app's ATL log, for error messages. */
+  logTail(pkg, lines = 20) {
+    try {
+      const text = fs.readFileSync(this.logFile(pkg), 'utf8');
+      return text.trimEnd().split('\n').slice(-lines).join('\n');
+    } catch (_) { return ''; }
+  }
 
   /** Self-contained ATL prefix, owned by ApkStart rather than the system. */
   portableRoot() {
@@ -281,22 +332,57 @@ class AtlBackend extends Backend {
     } catch (e) {
       return { ok: false, error: e.message };
     }
+    // Keep ATL's output: when an app fails, the Java or native stack trace in
+    // this log is the only way to see which framework API is missing.
+    let fd = null;
+    try {
+      fs.mkdirSync(this.logDir, { recursive: true });
+      fd = fs.openSync(this.logFile(pkg), 'a');
+      fs.writeSync(fd, `\n=== ${new Date().toISOString()} ${this.binary} ${args.join(' ')}\n`);
+    } catch (_) { fd = null; }
     let child;
     try {
       child = this.spawner(this.binary, args, {
-        stdio: 'ignore', detached: true, env,
+        stdio: fd !== null ? ['ignore', fd, fd] : 'ignore', detached: true, env,
       });
     } catch (e) {
       return { ok: false, error: e.message };
+    } finally {
+      if (fd !== null) { try { fs.closeSync(fd); } catch (_) { /* ignore */ } }
     }
+    let exited = null;
     if (child && child.on) {
-      child.on('error', () => {});
-      child.on('exit', () => { this._children.delete(pkg); });
+      child.on('error', (e) => { exited = { code: -1, error: e.message }; });
+      child.on('exit', (code, signal) => {
+        exited = { code, signal };
+        this._children.delete(pkg);
+        this._clearPid(pkg);
+      });
       if (child.unref) child.unref();
     }
     this._children.set(pkg, child);
+    this._writePid(pkg, child && child.pid);
     this._running = true;
-    return { ok: true, launched: true, pid: child && child.pid, args, dataDir: env.ANDROID_APP_DATA_DIR };
+
+    // An app that ATL cannot run usually dies within a second or two. Report
+    // that as a failed launch with the reason, instead of a silent no-op.
+    const deadline = Date.now() + this.settleMs;
+    while (!exited && Date.now() < deadline) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (exited && (exited.code !== 0 || exited.signal || exited.error)) {
+      const why = exited.error || (exited.signal ? `signal ${exited.signal}` : `exit code ${exited.code}`);
+      return {
+        ok: false,
+        error: `ATL stopped ${pkg} right after start (${why}). Log: ${this.logFile(pkg)}`,
+        log: this.logFile(pkg),
+        logTail: this.logTail(pkg),
+      };
+    }
+    return {
+      ok: true, launched: true, pid: child && child.pid, args, dataDir: env.ANDROID_APP_DATA_DIR, log: this.logFile(pkg),
+    };
   }
 
   /** Remove only this application's ATL data directory. */
@@ -306,19 +392,38 @@ class AtlBackend extends Backend {
     return { ok: true };
   }
 
-  running() { return [...this._children.keys()]; }
+  /** Packages with a live ATL process, including ones launched by another ApkStart process. */
+  running() {
+    const live = new Set(this._children.keys());
+    let files = [];
+    try { files = fs.readdirSync(this.runDir); } catch (_) { /* nothing tracked */ }
+    for (const f of files) {
+      if (!f.endsWith('.pid')) continue;
+      const pkg = f.slice(0, -4);
+      if (live.has(pkg)) continue;
+      if (this._pidAlive(this._readPid(pkg), pkg)) live.add(pkg);
+      else this._clearPid(pkg);
+    }
+    return [...live];
+  }
 
   async stopApp(pkg) {
     const child = this._children.get(pkg);
-    if (!child || !child.pid) return { ok: true };
-    try { process.kill(child.pid, 'SIGTERM'); } catch (_) { /* already gone */ }
+    const pid = (child && child.pid) || this._readPid(pkg);
     this._children.delete(pkg);
+    if (pid && (child || this._pidAlive(pid, pkg))) {
+      // ATL was started detached, so it leads its own process group: signal the
+      // group to take helper processes down with it, then fall back to the PID.
+      try { process.kill(-pid, 'SIGTERM'); } catch (_) {
+        try { process.kill(pid, 'SIGTERM'); } catch (__) { /* already gone */ }
+      }
+    }
+    this._clearPid(pkg);
     return { ok: true };
   }
 
   async stop() {
-    const pkgs = [...this._children.keys()];
-    for (const pkg of pkgs) {
+    for (const pkg of this.running()) {
       // eslint-disable-next-line no-await-in-loop
       await this.stopApp(pkg);
     }
@@ -326,10 +431,46 @@ class AtlBackend extends Backend {
     return { ok: true, note: 'ATL applications stopped' };
   }
 
-  usage() { return { total: 0, items: [{ label: 'ATL processes', size: 0 }] }; }
+  /** Stop the app and remove everything ATL kept for it. */
+  async uninstallApp(pkg) {
+    await this.stopApp(pkg);
+    const safe = safePart(pkg);
+    for (const p of [
+      path.join(this.atlDir, 'data', safe),
+      path.join(this.atlDir, 'launch', `${safe}.apk`),
+      this.logFile(pkg),
+    ]) {
+      try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) { /* keep going */ }
+    }
+    return { ok: true, atl: true };
+  }
+
+  /** Disk used by each app's ATL data directory. */
+  usage() {
+    const dirSize = (dir) => {
+      let total = 0;
+      let entries = [];
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return 0; }
+      for (const e of entries) {
+        const p = path.join(dir, e.name);
+        try {
+          if (e.isDirectory()) total += dirSize(p);
+          else if (e.isFile()) total += fs.statSync(p).size;
+        } catch (_) { /* vanished while scanning */ }
+      }
+      return total;
+    };
+    const root = path.join(this.atlDir, 'data');
+    let pkgs = [];
+    try { pkgs = fs.readdirSync(root); } catch (_) { /* no data yet */ }
+    const items = pkgs.map((p) => ({ label: p, size: dirSize(path.join(root, p)) }));
+    return { total: items.reduce((n, i) => n + i.size, 0), items };
+  }
 
   diagnose() {
-    return { backend: this.id, binary: this.binary, running: this.running(), atlDir: this.atlDir };
+    return {
+      backend: this.id, binary: this.binary, running: this.running(), atlDir: this.atlDir, logDir: this.logDir,
+    };
   }
 }
 

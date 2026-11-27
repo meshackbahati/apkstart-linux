@@ -174,6 +174,68 @@ function make(overrides = {}, appOverrides = {}) {
     assert.equal((await backend.client().shell('pidof other.package')).trim(), '');
   });
 
+  await test('launch reports an immediate crash with the log tail', async () => {
+    let onExit = null;
+    const crashing = (cmd, args, opts) => {
+      const child = {
+        pid: 5151, unref() {},
+        on(ev, fn) { if (ev === 'exit') onExit = fn; },
+      };
+      // ATL writes its error to the log, then exits with status 1.
+      if (Array.isArray(opts.stdio)) fs.writeSync(opts.stdio[1], 'java.lang.NoSuchMethodError: android.foo\n');
+      setTimeout(() => onExit && onExit(1, null), 20);
+      return child;
+    };
+    const { backend } = make({ spawn: crashing, settleMs: 1000 });
+    await backend.ensure();
+    const r = await backend.launchApp('org.crash.app');
+    assert.equal(r.ok, false);
+    assert.match(r.error, /exit code 1/);
+    assert.match(r.logTail, /NoSuchMethodError/);
+    assert.equal(fs.existsSync(backend.pidFile('org.crash.app')), false);
+  });
+
+  await test('a PID file lets a new backend instance see and stop the app', async () => {
+    const first = make().backend;
+    await first.ensure();
+    await first.launchApp('org.fdroid.fdroid');
+    assert.equal(first._readPid('org.fdroid.fdroid'), 4242);
+    const second = make().backend;
+    second._pidAlive = (pid, pkg) => pid === 4242 && pkg === 'org.fdroid.fdroid';
+    assert.deepEqual(second.running(), ['org.fdroid.fdroid']);
+    const signals = [];
+    const original = process.kill;
+    process.kill = (pid, sig) => { signals.push([pid, sig]); return true; };
+    try { await second.stopApp('org.fdroid.fdroid'); } finally { process.kill = original; }
+    assert.deepEqual(signals, [[-4242, 'SIGTERM']]);
+    assert.equal(fs.existsSync(second.pidFile('org.fdroid.fdroid')), false);
+  });
+
+  await test('stale PID files are dropped', async () => {
+    const { backend } = make();
+    fs.mkdirSync(backend.runDir, { recursive: true });
+    fs.writeFileSync(backend.pidFile('org.gone.app'), '999999\n');
+    backend._pidAlive = () => false;
+    assert.equal(backend.running().includes('org.gone.app'), false);
+    assert.equal(fs.existsSync(backend.pidFile('org.gone.app')), false);
+  });
+
+  await test('uninstall removes data, launch link and log; usage counts data', async () => {
+    const { backend } = make();
+    await backend.ensure();
+    await backend.launchApp('org.fdroid.fdroid');
+    const data = path.join(ATL_DIR, 'data', 'org.fdroid.fdroid');
+    fs.writeFileSync(path.join(data, 'prefs.xml'), 'x'.repeat(1000));
+    const u = backend.usage();
+    assert.ok(u.items.some((i) => i.label === 'org.fdroid.fdroid' && i.size >= 1000));
+    const original = process.kill;
+    process.kill = () => true;
+    try { await backend.client().uninstall('org.fdroid.fdroid'); } finally { process.kill = original; }
+    assert.equal(fs.existsSync(data), false);
+    assert.equal(fs.existsSync(path.join(ATL_DIR, 'launch', 'org.fdroid.fdroid.apk')), false);
+    assert.equal(fs.existsSync(backend.logFile('org.fdroid.fdroid')), false);
+  });
+
   console.log('\n[Backend registry]');
 
   await test('ATL is registered alongside builtin and Waydroid', () => {
