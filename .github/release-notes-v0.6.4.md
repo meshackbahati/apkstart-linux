@@ -15,6 +15,10 @@ Linux-first release pipeline.
 - Linux-first release workflow: full Node suite, screenshot fixture and CLI
   smoke run before AppImage and `.deb` packages are built, then SHA-256
   checksums are verified before assets are uploaded.
+- Waydroid is selected automatically on Linux once its binary and initialised
+  image are present; an explicit backend selection still wins. The setup script
+  supports Arch, Debian/Ubuntu, Fedora, openSUSE and Void, with Wayland and
+  binder preflight and root-owned sudoers rules.
 
 ## Changed
 
@@ -27,6 +31,10 @@ Linux-first release pipeline.
   status phrases gained exact translations.
 - Documentation was reorganised around Linux installation, usage, screenshots
   and release procedures.
+- Emulator adoption, `--stop-runtime` and downloads were repaired on Linux:
+  running emulators are discovered through the port probe, the `emulator-<port>`
+  serial is preferred, `ss` replaces Windows `netstat`, and each resolved
+  address gets five seconds instead of Node's 250 ms default.
 
 ## Verification boundary
 
