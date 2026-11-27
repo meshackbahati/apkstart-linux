@@ -206,8 +206,29 @@ else
     runroot usermod -aG input "$USER_NAME" 2>/dev/null || true
     # Narrow passwordless rules: only these exact commands may run without a
     # prompt, so ApkStart can wake an idle container and manage game controls.
-    UNFREEZE="$(command -v lxc-unfreeze || echo /usr/bin/lxc-unfreeze)"
-    K2T_BIN="$(command -v key2touch)"
+    # Never take sudoers paths from PATH: it can contain user-writable folders
+    # (~/.local/bin, linuxbrew), which would turn these rules into passwordless root.
+    # Only accept root-owned binaries in system folders that only root can write.
+    root_only() {
+      local p="$1" d
+      [ -x "$p" ] && [ ! -L "$p" ] || return 1
+      d="$p"
+      while :; do
+        [ "$(stat -c %u "$d")" = 0 ] || return 1
+        [ -z "$(find "$d" -maxdepth 0 -perm /022)" ] || return 1
+        [ "$d" = "/" ] && break
+        d="$(dirname "$d")"
+      done
+    }
+    pick_system_bin() {
+      local c
+      for c in "/usr/bin/$1" "/usr/sbin/$1" "/bin/$1" "/sbin/$1"; do
+        root_only "$c" && { printf '%s' "$c"; return 0; }
+      done
+      return 1
+    }
+    UNFREEZE="$(pick_system_bin lxc-unfreeze)" || die "lxc-unfreeze is not installed as a root-owned system binary."
+    K2T_BIN="$(pick_system_bin key2touch)" || die "key2touch is not installed as a root-owned system binary (expected /usr/bin/key2touch)."
     printf '%s ALL=(root) NOPASSWD: %s -P /var/lib/waydroid/lxc -n waydroid\n' "$USER_NAME" "$UNFREEZE" > "$TMP_DIR/apkstart-unfreeze.rules"
     printf '%s ALL=(:input) SETENV: NOPASSWD: %s\n' "$USER_NAME" "$K2T_BIN" > "$TMP_DIR/apkstart-key2touch.rules"
     for f in unfreeze key2touch; do
