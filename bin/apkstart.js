@@ -59,6 +59,7 @@ Usage:
   apkstart <app>                        launch by name or package
   apkstart --launch <app>               same as above
   apkstart --stop <app>                 stop a running application
+  apkstart --uninstall <app>            remove an application, its data and its launchers
   apkstart --backend <builtin|waydroid|atl> select the runtime backend
   apkstart init [--backend <id>]        install and configure that backend
   apkstart init --check                 report what is installed
@@ -126,6 +127,14 @@ async function stop(name) {
   await rt.client.forceStop(app.package);
   if (runtime.backend && typeof runtime.backend.stopApp === 'function') await runtime.backend.stopApp(app.package);
   process.stdout.write(`Stopped ${app.package}\n`);
+}
+
+async function uninstall(name) {
+  const app = findApp(name);
+  if (!app) throw new Error(`Application not installed: ${name}`);
+  const { installer } = make();
+  await installer.uninstall(app.package);
+  process.stdout.write(`Uninstalled ${app.label || app.package} (${app.package})\n`);
 }
 
 function list() {
@@ -219,6 +228,10 @@ function gui() {
   if (cmd === '--launch') {
     if (!argv[1]) throw new Error('--launch needs an application name');
     return launch(argv[1]);
+  }
+  if (cmd === '--uninstall') {
+    if (!argv[1]) throw new Error('--uninstall needs an application name');
+    return uninstall(argv[1]);
   }
   if (cmd === '--stop') {
     if (!argv[1]) throw new Error('--stop needs an application name');
