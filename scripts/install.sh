@@ -3,7 +3,7 @@
 # Usage: apkstart install   (or: bash scripts/install.sh)
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND="${APKSTART_BACKEND:-builtin}"
+BACKEND="${APKSTART_BACKEND:-waydroid}"
 # Desktop launchers do not load nvm or shell profiles, so pin the node and
 # Electron binaries that exist now instead of relying on PATH at click time.
 NODE_BIN="$(command -v node || true)"

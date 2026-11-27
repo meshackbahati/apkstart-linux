@@ -963,12 +963,23 @@ class Runtime {
     await this.client().exec(['kill-server'], { withSerial: false, timeout: 8000 }).catch(() => {});
 
     for (const port of alive) {
-      const serial = `127.0.0.1:${port + 1}`;
+      // On Linux the adb server already lists a local emulator as emulator-<port>;
+      // a second 127.0.0.1:<port+1> TCP attachment to the same adbd stays offline,
+      // so the healthy emulator was judged "not ready" and killed on every launch.
+      // adb was just restarted above and needs a moment to rediscover local emulators.
+      let serial = `127.0.0.1:${port + 1}`;
+      const local = this.client(`emulator-${port}`);
+      for (let k = 0; k < 5; k += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        if (await local.isOnline().catch(() => false)) { serial = `emulator-${port}`; break; }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 600));
+      }
       const c = this.client(serial);
       let booted = '';
       for (let i = 0; i < 6 && booted !== '1'; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        await c.connect().catch(() => false);
+        if (!serial.startsWith('emulator-')) await c.connect().catch(() => false);
         // eslint-disable-next-line no-await-in-loop
         const state = (await c.exec(['get-state'], { timeout: 5000 }).then((r) => r.stdout).catch(() => '')).trim();
         if (state === 'device') {

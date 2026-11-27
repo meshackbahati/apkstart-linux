@@ -8,6 +8,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ID="$(. /etc/os-release 2>/dev/null && echo "${ID:-unknown}")"
 USER_NAME="${SUDO_USER:-${USER:-$(id -un)}}"
 SUDO="sudo"
+# Scratch space for logs and sudoers drafts (was a hard-coded /tmp/opencode,
+# which only exists on the author's machine, so the session never started).
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/apkstart-setup.XXXXXX")"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 say() { printf '\n==> %s\n' "$1"; }
 run() { printf '+ %s\n' "$*"; "$@"; }
@@ -42,7 +46,7 @@ fi
 
 say "Starting a Waydroid session as $USER_NAME"
 if ! waydroid status 2>/dev/null | grep -q 'Session:.*RUNNING'; then
-  nohup waydroid session start >/tmp/opencode/apkstart-waydroid-setup.log 2>&1 &
+  nohup waydroid session start >$TMP_DIR/apkstart-waydroid-setup.log 2>&1 &
   for _ in $(seq 1 30); do
     waydroid status 2>/dev/null | grep -q 'Session:.*RUNNING' && break
     sleep 1
@@ -62,10 +66,10 @@ if command -v key2touch >/dev/null 2>&1; then
   runroot usermod -aG input "$USER_NAME" 2>/dev/null || true
   # Narrow passwordless rules: only these exact commands may run without a
   # prompt, so ApkStart can wake an idle container and manage game controls.
-  printf '%s ALL=(root) NOPASSWD: /usr/bin/lxc-unfreeze -P /var/lib/waydroid/lxc -n waydroid\n' "$USER_NAME" > /tmp/opencode/apkstart-unfreeze.rules
-  printf '%s ALL=(:input) SETENV: NOPASSWD: /usr/bin/key2touch\n' "$USER_NAME" > /tmp/opencode/apkstart-key2touch.rules
-  runroot cp /tmp/opencode/apkstart-unfreeze.rules /etc/sudoers.d/apkstart-waydroid
-  runroot cp /tmp/opencode/apkstart-key2touch.rules /etc/sudoers.d/apkstart-key2touch
+  printf '%s ALL=(root) NOPASSWD: /usr/bin/lxc-unfreeze -P /var/lib/waydroid/lxc -n waydroid\n' "$USER_NAME" > $TMP_DIR/apkstart-unfreeze.rules
+  printf '%s ALL=(:input) SETENV: NOPASSWD: /usr/bin/key2touch\n' "$USER_NAME" > $TMP_DIR/apkstart-key2touch.rules
+  runroot cp $TMP_DIR/apkstart-unfreeze.rules /etc/sudoers.d/apkstart-waydroid
+  runroot cp $TMP_DIR/apkstart-key2touch.rules /etc/sudoers.d/apkstart-key2touch
   runroot chmod 440 /etc/sudoers.d/apkstart-waydroid /etc/sudoers.d/apkstart-key2touch
   K2T() { sudo -n -g input -u "$USER_NAME" key2touch "$@"; }
   if ! K2T profiles 2>/dev/null | grep -q universal; then
