@@ -766,6 +766,29 @@ class Runtime {
     // 用户每次点开都是全量冷启动（25 秒 vs 8 秒的差别就在这一步）。
     let online = false;
     try { online = await this.client().isOnline(); } catch (_) { /* ignore */ }
+    if (!online) {
+      // A fresh process (for example `apkstart --stop-runtime`) has never seen the
+      // dynamically chosen port, so the default serial points at nothing. Look for
+      // a live emulator console and attach to it before deciding nothing runs.
+      const alive = await this.emulatorPorts().catch(() => []);
+      for (const port of alive) {
+        // Prefer the local emulator-<port> serial: `adb emu kill` only works on it,
+        // not on a 127.0.0.1:<port+1> TCP serial.
+        for (const serial of [`emulator-${port}`, `127.0.0.1:${port + 1}`]) {
+          const c = this.client(serial);
+          // eslint-disable-next-line no-await-in-loop
+          if (serial.startsWith('127.')) await c.connect().catch(() => false);
+          // eslint-disable-next-line no-await-in-loop
+          if (await c.isOnline().catch(() => false)) {
+            this.emuSerial = serial;
+            this.emulator.port = port;
+            online = true;
+            break;
+          }
+        }
+        if (online) break;
+      }
+    }
     if (online && this.emuSerial) {
       if (adbPath && this.emulator.snapshotWorthSaving !== false) {
         await this.emulator.saveSnapshotNow(adbPath, { timeout: 60000 }).catch(() => false);
@@ -780,8 +803,9 @@ class Runtime {
       }
       const still = await this.client().isOnline().catch(() => false);
       if (still) {
-        const m = /:(\d+)$/.exec(this.emuSerial);
-        const port = m ? Number(m[1]) - 1 : this.emulator.port;
+        const tcp = /:(\d+)$/.exec(this.emuSerial);
+        const local = /^emulator-(\d+)$/.exec(this.emuSerial);
+        const port = tcp ? Number(tcp[1]) - 1 : (local ? Number(local[1]) : this.emulator.port);
         const pid = await this.pidOnPort(port);
         if (pid) await killTree(pid);
       }
@@ -899,8 +923,12 @@ class Runtime {
         const m = /^"([^"]+)","(\d+)"/.exec(line.trim());
         if (m && /qemu|emulator/i.test(m[1])) pids.add(m[2]);
       }
-      if (!pids.size) return [];
-      const ns = await run('netstat', ['-ano', '-p', 'TCP']);
+      // tasklist/netstat only exist on Windows. On Linux tl is always empty, and
+      // returning [] here made every caller believe no emulator was running:
+      // starts booted a second instance and --stop-runtime could never find one.
+      // Fall through to the port probe below instead.
+      if (!pids.size && process.platform === 'win32') return [];
+      const ns = pids.size ? await run('netstat', ['-ano', '-p', 'TCP']) : '';
       for (const line of ns.split('\n')) {
         const m = /:(\d+)\s+\S+\s+LISTENING\s+(\d+)/i.exec(line);
         if (m && pids.has(m[2])) ports.add(Number(m[1]));
@@ -973,6 +1001,14 @@ class Runtime {
   async pidOnPort(port) {
     return new Promise((resolve) => {
       const { execFile } = require('child_process');
+      if (process.platform !== 'win32') {
+        // netstat -ano is Windows syntax; on Linux ask ss for the listening socket owner.
+        execFile('ss', ['-ltnpH', `sport = :${port}`], (err, stdout) => {
+          const m = !err && /pid=(\d+)/.exec(String(stdout || ''));
+          resolve(m ? Number(m[1]) : 0);
+        });
+        return;
+      }
       execFile('netstat', ['-ano', '-p', 'TCP'], { windowsHide: true }, (err, stdout) => {
         if (err || !stdout) return resolve(0);
         const line = stdout.split('\n').find((l) => new RegExp(`:${port}\\s`).test(l) && /LISTENING/i.test(l));

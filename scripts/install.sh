@@ -3,7 +3,12 @@
 # Usage: apkstart install   (or: bash scripts/install.sh)
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND="${APKSTART_BACKEND:-waydroid}"
+BACKEND="${APKSTART_BACKEND:-builtin}"
+# Desktop launchers do not load nvm or shell profiles, so pin the node and
+# Electron binaries that exist now instead of relying on PATH at click time.
+NODE_BIN="$(command -v node || true)"
+ELECTRON_BIN="$ROOT/node_modules/electron/dist/electron"
+ICON="$ROOT/build/store-assets/Square150x150Logo.png"
 
 say() { printf '\n==> %s\n' "$1"; }
 
@@ -18,7 +23,14 @@ fi
 command -v apkstart || { printf 'apkstart is not on PATH\n' >&2; exit 1; }
 
 say "Registering APK file association"
-node -e "require('$ROOT/src/core/assoc').registerAssociation().then(r => console.log(JSON.stringify(r))).catch(e => { console.error(e.message); process.exitCode = 1; })"
+if [ -x "$ELECTRON_BIN" ]; then
+  # registerAssociation is synchronous and needs the program to run; without it
+  # the handler is written with Exec="" and double-clicking an APK does nothing.
+  node -e "try { console.log(JSON.stringify(require(process.argv[1]).registerAssociation(process.argv[2], process.argv[3], '\"' + process.argv[4] + '\"'))); } catch (e) { console.error(e.message); process.exitCode = 1; }" \
+    "$ROOT/src/core/assoc" "$ELECTRON_BIN" "$ICON" "$ROOT"
+else
+  printf 'Electron is missing (%s); run npm install first. Skipping APK association.\n' "$ELECTRON_BIN" >&2
+fi
 
 say "Installing the ApkStart desktop entry"
 DESKTOP="$HOME/.local/share/applications/apkstart.desktop"
@@ -28,8 +40,8 @@ Type=Application
 Version=1.0
 Name=ApkStart
 Comment=Run Android applications on the Linux desktop
-Exec="$ROOT/bin/apkstart.js" --gui
-Icon=$ROOT/assets/icon.png
+Exec="$NODE_BIN" "$ROOT/bin/apkstart.js" --gui
+Icon=$ICON
 Terminal=false
 Categories=Utility;
 EOF
@@ -42,7 +54,8 @@ Type=Application
 Version=1.0
 Name=ApkStart Game Controls
 Comment=Edit the universal keyboard and mouse controller for Android games
-Exec=$ROOT/bin/apkstart.js --controls edit
+Exec="$NODE_BIN" "$ROOT/bin/apkstart.js" --controls edit
+Icon=$ICON
 Terminal=false
 Categories=Utility;Settings;
 EOF
