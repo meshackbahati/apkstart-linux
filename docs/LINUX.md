@@ -19,12 +19,16 @@ The emulator and platform-tools are downloaded from Google on first use; the sys
 
 ## Command line
 
-The generated launchers call the same entry points as the Windows build:
+The generated launchers call the same `apkstart` command as the manual CLI:
 
 ```bash
-ApkStart /path/to/app.apk          # install
-ApkStart --launch com.example.game # launch
+apkstart --install /path/to/app.apk   # install
+apkstart --launch com.example.game    # launch
+apkstart --list                       # list installed applications
 ```
+
+The exact flag reference is in [CLI.md](CLI.md). Installation, setup and daily
+use are all covered in the repository [README.md](../README.md).
 
 ## Memory behaviour
 
@@ -87,6 +91,15 @@ Desktop users type on the host keyboard, so ApkStart keeps Android's on-screen k
 ### Window management limitation
 
 Waydroid 1.6.3 runs all multi-window applications on one shared Android display. Each application receives its own top-level window, but the Android window manager draws the application inside a freeform rectangle on that display. Consequently the window close button and Alt+F4 are ignored, resizing the top-level window resizes the shared display rather than the application, and Android draws its own title bar. This is an upstream limitation documented in [waydroid issue #2470](https://github.com/waydroid/waydroid/issues/2470); the proposed fix, [android_hardware_waydroid PR #93](https://github.com/waydroid/android_hardware_waydroid/pull/93), does not change multi-window mode. ApkStart cannot correct this from outside the container. Applications can still be stopped reliably from the application list, which issues `am force-stop` and closes their window.
+
+## Networking and DNS
+
+The guest uses QEMU user-mode NAT, so its traffic reuses the host network stack
+and no virtual adapter is created. Since 0.6.4, Settings → Performance and
+resources offers a DNS preset: domestic public DNS by default, Cloudflare,
+Google, or off. The choice is passed to the emulator as `-dns-server` on the
+next start. Choose `off` when intranet names must be resolved by the host.
+Older configurations that only store `engine.fastDns` keep working.
 
 ## Guest language
 

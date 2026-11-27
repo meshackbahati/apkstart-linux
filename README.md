@@ -1,413 +1,452 @@
 # ApkStart Linux
 
-This repository is the Linux-focused build of ApkStart. The original project was created by RoutineMiku; the Linux runtime, command line, Waydroid and ATL backends, and game controls are developed here.
-
-<p align="center"><img src="docs/images/logo.png" alt="ApkStart Logo" width="160" /></p>
-
-[![CI](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml/badge.svg)](https://github.com/RoutineMiku/apkstart/actions/workflows/ci.yml)
+[![CI](https://github.com/meshackbahati/apkstart-linux/actions/workflows/ci.yml/badge.svg)](https://github.com/meshackbahati/apkstart-linux/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/meshackbahati/apkstart-linux?include_prereleases&sort=semver)](https://github.com/meshackbahati/apkstart-linux/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20x64-3C9.svg)](#)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64-3C9.svg)](#requirements)
 
-**This repository is a Linux fork of [RoutineMiku/apkstart](https://github.com/RoutineMiku/apkstart).** It keeps the original idea of running Android applications as ordinary desktop applications, but targets Linux desktops: APK file association through `xdg-mime`, `.desktop` launchers, a KVM-accelerated Android emulator, native emulator windows, and conservative memory defaults. See [docs/LINUX.md](docs/LINUX.md) for the full Linux guide.
+Run Android applications as ordinary desktop applications on Linux. Double-click
+an APK to install it, click its launcher to open it in a dedicated window, and
+let the Android runtime become idle when no application is in the foreground.
 
-The description below is retained from the upstream Windows project and describes the shared design; the Windows installers and release assets are published by the upstream repository.
+This repository is the Linux-focused fork of
+[RoutineMiku/apkstart](https://github.com/RoutineMiku/apkstart). The original
+project design comes from RoutineMiku; the Linux runtime, command line,
+Waydroid and ATL backends, game controls and Linux packaging are developed here.
 
-**Windows 上的安卓应用运行器 —— 让安卓应用像 Windows 原生软件一样被安装和使用。**
-注：本项目为早期版本，作者自娱自乐产物，所有修改都是作者下班和休息日在处理，开源免费，不插广告，暂时也不是很好用，没有找过营销号推广，无妄之灾。
+This README is the single entry point for installation, daily use, networking,
+release procedures and verification. Smaller documents under `docs/` cover
+specific implementation details only.
 
-- 🖱️ **双击 .apk 即安装**：注册 .apk 文件关联后，在资源管理器里双击 APK，自动解析 → 安装 → 生成桌面图标，全程无需打开任何模拟器界面。
-- 🧩 **每个应用一个桌面图标**：图标从 APK 内部离线提取并转为多尺寸 ICO，双击桌面图标 = 直接启动该应用，与打开一个原生 Windows 软件的体验一致。
-- 🪟 **应用就是一个窗口**：运行时以**带窗口**模式启动（无头模式下 Android 不出 VSYNC，应用进程活着但屏幕上是空的），ApkStart 把这块窗口改标题、换真实应用图标、按竖屏比例摆好位置，就是一个独立应用窗口；**全屏**铺满屏幕高度并居中，**窗口模式**可自由拖动缩放且按应用记忆尺寸。
-- 🔍 **能被 Windows 搜到**：安装后同时创建桌面 + 开始菜单（`程序\ApkStart\`）快捷方式，按应用名在开始菜单搜索即可直达，任务栏按应用分组。
-- 📁 **数据互通**：`%USERPROFILE%\ApkStartShared` ↔ 安卓内 `/sdcard/ApkStartShared` 持续双向同步，安卓应用存下的文件直接出现在本机。
-- 🪶 **极致轻量**：壳层本身零第三方依赖（连 ZIP / PNG / ICO / AXML 解析都是手写的），运行时按需拉起，空闲自动回收；也可以完全复用你机器上已有的安卓运行时，额外占用为零。
+## Contents
 
-![主界面](docs/images/app.png)
+1. [Why it exists](#why-it-exists)
+2. [Interface](#interface)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [One-time setup](#one-time-setup)
+6. [Daily use](#daily-use)
+7. [Windows and input](#windows-and-input)
+8. [Networking and DNS](#networking-and-dns)
+9. [Files and data](#files-and-data)
+10. [Diagnostics and repair](#diagnostics-and-repair)
+11. [Updates](#updates)
+12. [Recommended settings](#recommended-settings)
+13. [Releasing](#releasing)
+14. [Development and tests](#development-and-tests)
+15. [Design boundaries](#design-boundaries)
+16. [Credits and licence](#credits-and-licence)
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  桌面图标（真实应用图标 .lnk）                              │
-│      │  双击                                               │
-│      ▼                                                     │
-│  ApkStart.exe --launch <包名>                              │
-│      │  运行时未启动？→ 自动拉起（Android Emulator + API34）│
-│      ▼                                                     │
-│  按系统解析出的 LAUNCHER 入口启动（不是 APK 里的主 Activity）│
-│      │  存活观察 18 秒，闪退自动重试 / 重置数据 / 补权限     │
-│      ▼                                                     │
-│  模拟器窗口 = 应用窗口（改标题、换图标、竖屏比例、全屏居中） │
-└────────────────────────────────────────────────────────────┘
-```
+## Why it exists
 
-## Linux quick start
-
-The Linux build uses the same runtime as the upstream project, but downloads the Linux `platform-tools` and emulator archives from Google on first use. The Android system image is platform-independent.
-
-Requirements are an x86_64 Linux desktop session, an accessible `/dev/kvm`, and firmware virtualization enabled (Intel VT-x or AMD SVM). On most distributions the user must belong to the `kvm` group.
-
-1. Obtain a Linux AppImage from this fork's releases, or build one with `npm run pack:linux`.
-2. Start ApkStart and enable **Associate .apk files** in the settings. This writes an `apkstart-apk.desktop` handler for `application/vnd.android.package-archive` and records the previous default so it can be restored later.
-3. Double-click an `.apk`, `.xapk` or `.apks` in the file manager. ApkStart parses the package offline, installs it, and writes `.desktop` launchers to the desktop and to `~/.local/share/applications`.
-4. Click the application icon to launch. The emulator window is the application window, with native keyboard and mouse input. KVM acceleration and host GPU rendering are used when available; games follow the same path.
-5. When no application is active, the runtime becomes idle and exits after five minutes by default. The quickboot snapshot is retained so the next launch is fast.
-
-The automatic guest budget on Linux is 2 GB of RAM and 2 vCPUs. Prewarming keeps the runtime ready while applications are in use, and idle shutdown returns the memory after five minutes. The default panel is a 1280×720 landscape window rather than a phone-shaped portrait window. Manual values in the settings always take precedence. The background download and boot path were verified on a KVM-capable host; see [docs/LINUX.md](docs/LINUX.md) for details and known limitations.
-
-### Command line and one-time setup
-
-ApkStart installs as a global command. The installer registers `.apk`, writes the desktop entry and initialises the selected backend:
-
-```
-npm install -g .          # or: bash scripts/install.sh
-apkstart init --backend waydroid
-apkstart init --check
-```
-
-Daily use does not require the graphical window:
-
-```
-apkstart --install ~/Downloads/app.apk
-apkstart --list
-apkstart <app-name-or-package>
-apkstart --stop <app-name>
-apkstart --stop-runtime
-```
-
-Three backends are available: `builtin` (self-contained QEMU), `waydroid` (broad compatibility in a shared-kernel container, approximately 0.9 GB resident) and `atl` (experimental native Linux processes for compatible APKs). Select one with `apkstart --backend <id>`. Each backend owns a setup module under `src/core/setup.js`, so `apkstart init` installs only what the chosen backend needs. See [docs/CLI.md](docs/CLI.md) for the full command reference, [docs/ATL.md](docs/ATL.md) for the portable native-process module, and [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md) for measured memory, window behaviour and limitations.
-
-Game controls via `key2touch` are experimental and disabled by default: the universal layout did not steer or accelerate Moto Rush, and an active mapper captures keys across the desktop. Use `apkstart --game <app>` only with a verified game-specific layout, and `apkstart --controls off` to release capture immediately. See [docs/SPECIFICATIONS.md](docs/SPECIFICATIONS.md).
-
-## 下载即用（不想编译）
-
-两个源内容一致，国内建议用 Gitee：
-
-- GitHub：[github.com/RoutineMiku/apkstart/releases](https://github.com/RoutineMiku/apkstart/releases)
-- Gitee：[gitee.com/daily-miku/apkstart/releases](https://gitee.com/daily-miku/apkstart/releases)（国内直连快得多）
-
-安装包（三种形态，内容与版本号完全一致）：
-
-| 形态 | 文件名 | 何时选它 |
+| Alternative | Typical experience | ApkStart Linux |
 |---|---|---|
-| 商店版 | `ApkStart_<四段版本>_x64.msix` | 从 Microsoft Store 装。内置完整运行时，装完不联网；自更新交给商店 |
-| 完整便携版 | `ApkStart-v*-win64-full.zip`（约 830 MB，解压 ~1.3 GB） | **不想装、也不想等下载**：解压即用，运行时（模拟器 + 系统镜像）全在包里 |
-| 安装版 | `ApkStart-v*-Setup.exe`（约 1.3 GB） | 想要桌面/开始菜单快捷方式、卸载项 |
-| 轻量便携版 | `ApkStart-v*-win64-portable.zip`（96 MiB，解压 ~227 MB） | 只想先试试，首次启动再联网下载运行时 |
+| Android Studio emulator | Several gigabytes, manual AVD and port setup | One-click runtime deployment, then drag in an APK |
+| Third-party PC emulator | All apps inside one large window | One desktop launcher and one window per application |
+| Cloud phone | Network dependent, high latency, unclear data ownership | Fully local; application data stays on the host |
+| Manual `adb install` | A terminal for every install and launch | Double-click install, click-to-launch, idle shutdown |
 
-> 所有形态的 `ApkStart.exe` 都写入了**品牌图标 + 版本资源**（FileDescription = `ApkStart 安卓应用运行器`，
-> CompanyName = `RoutineMiku`，版本与 `package.json` 同步），不再是 Electron 的默认图标和 `33.x` 版本号。
-> 自己从源码打包时：`npm run pack`（轻量）/ `npm run pack:full`（完整）/ `npm run build:msix`（商店包）。
+## Interface
 
-### 画面铺满是怎么做到的
+<p align="center"><img src="docs/screenshots/ui-main/00-landing.png" alt="Application grid" width="760" /></p>
 
-模拟器的**物理面板方向**（`hw.lcd.width/height`）就是画面的真实形状。面板方向和应用自己声明的
-`screenOrientation` 不一致时，Android 只会给应用一个信箱式的中间窄条 —— 两侧补黑，换窗口大小、
-改 `wm size`、改 letterbox 样式都填不满（这套组合逐项试过，见 `src/core/apk.js` 的注释）。
+The status bar reports runtime readiness, Android version, device and port, and
+any actionable fix count. Settings are grouped into nine searchable categories:
+Common & Install, Display & Window, Input & Controls, Performance & Resources,
+Network & Downloads, Diagnostics & Repair, Integration & Files, Update & About,
+and Lab.
 
-所以 ApkStart 在**安装 APK 时离线解析 `AndroidManifest.xml`**，统计出这个应用天然是横屏还是竖屏
-（启动 Activity 加权；全 `sensor` / `fullSensor` 的会在首次运行后再问安卓要一次实际值），存进
-`apps.json`，启动时按它选面板：
+<p align="center"><img src="docs/screenshots/ui-performance/02-step.png" alt="Performance settings" width="760" /></p>
 
-- 红果短剧这类竖屏应用 → 竖屏面板 720×1280，正立、铺满、density 190（sw606dp）同时给出平板排版；
-- 墨读这类横屏应用 → 横屏面板 1280×720，正立、铺满。
+The captures under `docs/screenshots/` come from the real renderer with stubbed
+IPC data. They show interface states, not live Android sessions: no emulator
+boot, installation, network request or user directory is involved. Each
+directory contains PNG captures and an empty console log, which means the
+renderer produced no script errors.
 
-只有「面板方向和应用方向不一致」的那一次才重启运行时（约 40 秒，标题栏会给出提示），
-之后同方向的应用都是秒进。标题栏的旋转按钮会把这个应用的方向**记住**（其它应用不受影响），
-设置 → 应用窗口 → 屏幕方向可以改成「强制横屏 / 强制竖屏」。
+To regenerate them, build the fixture and serve it locally:
 
-排版由「逻辑密度」决定：720 宽按 190dpi 算等于 **606dp**，正好越过 Android 的 600dp 平板断点，
-红果短剧的双列剧集页、设置页分栏都只在这个密度下出现（镜像默认 320dpi 只有 360dp，是手机排版）。
-这就是设置里的「平板排版」开关，默认打开；关掉会回到手机排版。
+```bash
+npm run docs:fixture
+cd test/out/ui-fixture && python3 -m http.server 8765 --bind 127.0.0.1
+```
 
-### 在线更新（自动选较快的源）
+Then capture states with the browser helper:
 
-设置 → **软件更新** → 「检查更新」，或托盘右键 → 「检查更新」。发现新版本后点「立即更新」即可。
+```bash
+pwshot http://127.0.0.1:8765/index.html --out docs/screenshots/ui-main --wait 1500
+pwshot http://127.0.0.1:8765/index.html --out docs/screenshots/ui-performance \
+  --wait 1200 \
+  --click '#btnSettings' --click '#setNav .set-nav-item[data-cat="perf"]' \
+  --fill '' --fill ''
+```
 
-- 安装版下载 `ApkStart-v*-Setup.exe` 静默安装；
-- 轻量版下载 `ApkStart-v*-win64-portable.zip`，解压后覆盖**程序目录**——运行时目录（`%APPDATA%\apkstart\runtime`）、已装应用与快照都不在程序目录里，所以更新不会丢东西；
-- 替换动作由一段独立 PowerShell 脚本完成（等主进程退出 → 覆盖 → 重新拉起），**不会出现「请手动关闭程序」的弹窗**，也不会在桌面上残留模拟器窗口。
+The tool lives at `tools/ui-screenshot-fixture.js`. When a setting is added to
+the UI, add its default to the fixture so the screenshot still renders the real
+control. A screenshot proves that a state renders; it does not prove that a
+backend works or that an APK installs. Those claims require `npm run test:boot`
+and `npm run selftest` on a host with KVM.
 
-更新链路不是死连 GitHub，而是**每次现测现选**：
+## Requirements
 
-1. 同时问 GitHub 与 Gitee 的最新版本，取版本号更高的那个（一个源超时/被墙不影响另一个）；
-2. 把「源站直连 / Gitee 同名资产 / 镜像前缀」列成候选，每个地址真下 256KB 测速，
-   只算「收到首字节之后」的吞吐（握手时间不计入，否则高延迟大带宽的源会被误判成慢）；
-3. 按实测速度排序，用最快的那条分块并行下载；失败自动换下一条。
+| Requirement | Why it matters | How to check |
+|---|---|---|
+| x86_64 Linux with X11 or Wayland | The packaged runtime is built for x86_64 only; Linux ARM64 has no official Android Emulator archive | `uname -m` |
+| Hardware virtualisation enabled (VT-x or AMD SVM) | Without KVM the guest falls back to software emulation, which boots but is too slow for games | `grep -E 'vmx\|svm' /proc/cpuinfo` |
+| Accessible `/dev/kvm` | The emulator needs read/write access to the KVM device | `test -r /dev/kvm && test -w /dev/kvm && echo ok` |
+| Membership of the `kvm` group | Most distributions restrict `/dev/kvm` to that group | `groups \| grep kvm` |
+| At least 8 GB RAM, 16 GB recommended | The guest is capped at 2 GB and 2 vCPUs by default, but the desktop still needs memory | `free -h` |
+| About 8 GB free disk | The runtime, Android image and quickboot snapshot share one directory | `df -h` |
 
-设置里的「下载与更新源」可以强制只用某一边（企业网络只放行一个域名时用），
-也可以关掉公共加速镜像、或改用自建镜像前缀。Gitee 附件单文件上限 100MB，
-便携包换用 7-Zip 的 deflate（`-mx=9`）压缩后是 **95.0MB**，所以 Gitee 上也是
-一个能直接双击解压的整包（以前要切成 `.part1/.part2` 手工拼接，那版已经废弃）。
-两个源的同名包体积并不完全一样，客户端按测速结果只挑一个源下完，不会混拼。
+Add the current user to `kvm` if the check fails, then log out and back in:
 
-两个仓库都是公开的，Gitee 的发行版列表匿名就能读，不需要填任何 token。
-（只有在 Gitee 限流返回 403/429 时，才需要在设置里填一个只读 token 提高额度。）
+```bash
+sudo usermod -aG kvm "$USER"
+```
 
+`xdg-mime` is used for `.apk` association when present. When it is absent,
+ApkStart writes `~/.config/mimeapps.list` directly, so no extra package is
+needed for file association.
 
-**开箱即有的默认行为**（不用去设置里找）：
+## Installation
 
-- 开机自动启动，常驻托盘；双击桌面图标直接进应用。
-- 安装 APK 后自动创建**桌面 + 开始菜单**两份快捷方式，Windows 搜索能直接搜到应用名；老版本漏建的会在启动时自动补齐。
-- 应用窗口是原生渲染（非投屏）：**全屏**铺满屏幕高度并居中、保持手机比例不变形；**窗口模式**保持竖屏，可自由拖动缩放，每个应用的尺寸单独记忆。随时按 `F11` 或右键托盘切换。
-- 安装后自动授予应用申请的运行时权限，不会卡在系统授权框；应用闪退会自动重试、必要时重置应用数据后再拉起。
-- **网络直接用主机的网络**：安卓侧走 QEMU 用户态 NAT，出口复用主机的物理网卡，**不会在 Windows 上创建任何虚拟网卡 / 虚拟交换机**（不需要装驱动、也不多一个网络适配器）。不需要联网下载、不需要改任何网络设置。
+Releases publish an AppImage and a Debian package. Both contain only the
+ApkStart code and the Electron runtime. The Android emulator, adb and the
+system image are downloaded from Google on first use and stored outside the
+application directory, so updating the application never removes installed
+apps or snapshots.
 
-## 设置页：分好类，还能搜
+### AppImage
 
-设置项越来越多，所以从 0.6.0 起设置页按用途分成八类，左侧一列导航：
+```bash
+chmod +x ApkStart-*-x86_64.AppImage
+./ApkStart-*-x86_64.AppImage
+```
 
-| 分类 | 装了什么 |
-|---|---|
-| 常用与安装 | 运行时与环境、一键完成、开机自启、磁盘占用与清理 |
-| 显示与窗口 | 显示模式、自动全屏、屏幕方向、镜像自动旋转、平板排版、窗口承载方式、安卓系统设置 |
-| 操作与输入 | 鼠标键位、键盘映射（游戏手柄） |
-| 性能与资源 | 资源策略、画质、数据分区、系统语言、中文输入法、快照、开机预热、高级参数 |
-| 网络与下载 | 更新与下载源、公共加速镜像、下载线程数 |
-| 诊断与修复 | 本机体检 · 自动配置、驱动 · 兼容补丁、自动检测 · 智能诊断 |
-| 集成与文件 | 桌面与应用、文件互通、系统集成 |
-| 更新与关于 | 软件更新、关于 |
+The updater replaces the AppImage in place: it reads the `APPIMAGE` environment
+variable set by the AppImage runtime. Keep the original file name and location
+if automatic updates are wanted.
 
-顶部还有一个搜索框：输入「横屏」「内存」「代理」等关键词，命中项**跨分类**显示，
-不会出现「搜到了却看不见」。上次停留的分类会记住，下次打开就在原地。
+### Debian / Ubuntu
 
-## 自动检测（自动 debug）
+```bash
+sudo apt install ./ApkStart-*-amd64.deb
+apkstart --version
+```
 
-设置 → **诊断与修复** → 「自动检测 · 智能诊断」。后台定时把机器查一遍，出问题按分类列出来：
+A package-manager install has no single replaceable file, so automatic updates
+fall back to opening the download page. Download the new package and install it
+over the old one to upgrade.
 
-- **运行时**：上次启动失败的真实原因、引导卡死、残留锁文件、孤儿模拟器进程、快照空壳、没有硬件加速
-- **设备连接**：adb 未授权（安卓弹了「允许 USB 调试吗」没人点）、offline、运行时在跑但 adb 看不到设备
-- **存储**：磁盘余量、数据分区配置值与实际值不一致（差量盘挡住扩容）、共享目录不可写
-- **设置**：屏幕方向策略与物理面板打架、独立窗口下的自动全屏不生效
-- **网络 / 日志**：安卓侧没网、下载源不通、最近日志里的错误
+### From source
 
-每条问题都能一键处理（重启运行时、清锁、清孤儿进程、作废快照、清理磁盘、重置安卓网络…）。
-修复后自动复检。
+Node.js 20 or newer is required; CI uses 22.
 
-两条原则：**探测失败不会被当成问题**（拿不到状态就报「不知道」，绝不瞎报），
-**只在新问题出现时提醒一次**（老问题不重复打扰，恢复了只静默记账）。
-默认每 10 分钟一次，可在同一页关掉或改间隔。
-
-## 从源码构建
-
-```powershell
-# 1. 安装依赖（含 Electron 运行时）
+```bash
+git clone https://github.com/meshackbahati/apkstart-linux.git
+cd apkstart-linux
 npm install
-
-# 2. 启动并完成运行时部署（一次性下载 adb / Android Emulator / 系统镜像）
 npm start
-
-# 3.（可选）注册 .apk 双击安装
-npm run assoc:on
-
-# 4. 打包便携版（免安装，可直接分发）
-npm run pack
-# 产出 dist/ApkStart-win64-portable/ApkStart.exe
-# 5. 压成 zip 发布（必须用这个脚本，别用 Compress-Archive：体积会大 5MB、塞不进 Gitee）
-node build/zip.js dist/ApkStart-win64-portable ApkStart-win64-portable.zip
 ```
 
-### 单文件 EXE（内置完整运行时，装完不再联网）
+To install the global `apkstart` command and register desktop files:
 
-如果希望「一个 EXE 发出去，对方双击就能跑，不用等下载」，用这条：
-
-```powershell
-# 先把 engine/ 整理成可分发运行时（system.img 用 xz/LZMA2 极限压缩，3.1GB → 约 1.1GB；
-# 同时裁掉 emulator 里用不到的部分：arm64 的 QEMU、Vulkan 后端、多语言包、qsn/自检工具、VR 资源）
-npm run runtime
-
-# 再打成安装版 EXE（electron-builder nsis 目标，装到当前用户目录）
-npm run build:exe
-# 产出 dist/release/ApkStart-<版本>-Setup.exe
+```bash
+npm install -g .
+# or, for a script that also creates launcher entries:
+bash scripts/install.sh
 ```
 
-体积构成（实测）：Electron 约 180MB、emulator 瘦身后约 480MB、系统镜像 xz 压缩后约 1.1GB，
-最终安装包约 1.32GB（相比 gzip 方案省约 490MB）。能再压的硬下限就在 system.img 那条
-（它就是安卓系统本身，且是 verity 保护的镜像，无法从外部裁掉 GMS 组件）。
-网络默认走主机 NAT，不创建虚拟网卡，所以也不依赖任何额外驱动。
+Verify the installation without starting the GUI or downloading anything:
 
-首次启动会把 xz 镜像展开到 `%APPDATA%\apkstart\system-images`（约 20 秒，只做一次），
-之后每次直接复用。AVD 与已装应用固定存放在 `%APPDATA%\apkstart\avd`，
-即使便携版每次解压到临时目录也不会丢。
+```bash
+apkstart --version
+apkstart --help
+apkstart init --check
+apkstart --list
+```
 
-## 运行时说明：完全独立，不依赖任何第三方模拟器
+## One-time setup
 
-ApkStart 是一个**自持**的项目，运行时组件全部由自己下载、校验和管理（位于 `%APPDATA%\apkstart\runtime`）。
-轻量版默认从**本项目的 GitHub Release** 下载整包（`ApkStart-runtime-*.zip`），拿不到才退回下表里的官方源：
+1. Start ApkStart and open **Settings → Common & Install**. Enable **Associate
+   .apk files**. The handler is registered for
+   `application/vnd.android.package-archive`, and the previous default is
+   recorded so it can be restored later.
+2. Open **Settings → Common & Install → One-click setup** (or run
+   `apkstart --start-runtime`). ApkStart downloads and verifies adb, the
+   Android Emulator and the Android 14 Google Play x86_64 image, boots the guest
+   once and saves a quickboot snapshot. On a normal connection this takes one to
+   three minutes. The runtime lives in `~/.local/share/apkstart/runtime`,
+   outside the application directory.
+3. Confirm readiness in the status bar. It should read "Runtime is ready" with
+   the Android version and a device entry such as `emulator-5554`. A successful
+   dependency check does not prove that Android booted; only an adb device that
+   reports `sys.boot_completed=1` does.
 
-| 组件 | 来源 | 大小 | 用途 |
+### Backends
+
+The default `builtin` backend is self-contained. Two Linux alternatives are
+opt-in and must be initialised explicitly:
+
+```bash
+apkstart init --backend waydroid   # shared-kernel container, about 0.9 GB resident
+apkstart init --backend atl        # experimental native processes
+apkstart --backend waydroid        # select it for daily use
+apkstart init --check              # report dependency state
+```
+
+| Backend | Id | What it runs | When to choose it |
 |---|---|---|---|
-| adb（platform-tools） | dl.google.com 官方源 | ~8 MB | 安装/启动安卓应用 |
-| Android Emulator | dl.google.com 官方源（8 线程并行下载） | ~440 MB | 运行时引擎（自带设备模型与 GPU 转译） |
-| Android 14 通用系统镜像（Google Play x86_64） | dl.google.com 官方源 | 源镜像 ~3.1 GB（xz 后 ~1.1 GB） | 唯一的基础层：x86 应用、仅含 ARM 库的应用、GMS 都能跑，镜像即系统，无需安装 |
-| AEHD 驱动（可选） | dl.google.com 官方源 | ~0.2 MB | 硬件加速（或用 Windows「虚拟机平台」WHPX） |
+| Self-contained emulator | `builtin` | Google Android Emulator, KVM accelerated, x86_64 Android 14 image with ARM translation | General use, games, apps that need Google Play |
+| Waydroid container | `waydroid` | Android in a shared-kernel LXC container | Lower resident memory, persistent app state, Wayland desktops with binder and `/dev/dri` |
+| Android Translation Layer | `atl` | Native Linux processes derived from the APK | Experimental; only APKs without Google Play, DRM, FCM or Binder dependencies |
 
-首次使用时，「运行时」页会引导完成以上部署（**一键部署**）：
-1. adb 与运行时引擎、系统镜像自动下载（官方源实测 10+ MB/s）；
-2. 部署完成后**自动开机**，之后双击桌面图标自动拉起，全程无感。
+Waydroid needs a Wayland session, binder devices and a render node under
+`/dev/dri`. NVIDIA proprietary drivers are not supported by Waydroid. Its setup
+script configures adb authorisation, a narrow sudo rule for idle thawing and
+keyboard-to-touch controls. Waydroid 1.6.3 draws its own title bar and ignores
+window close on multi-window apps; stop the app from the application list
+instead. ATL requires a source build, and its framework implementations are
+incomplete; games with OpenGL or Binder dependencies may not run.
 
-![运行时部署向导](docs/images/setup.png)
+### First application
 
-**设备兼容性（自动处理，无需干预）**
+Double-click an `.apk`, `.xapk` or `.apks` in the file manager, or run:
 
-- 没有硬件加速时自动回退软件模拟；启动失败按「渲染后端 → 加速方式 → 内存/冷启动」最多 4 组参数自动重试。
-- `-gpu` 按引擎版本自动选择（37.x 用 `software`，老版本用 `swiftshader_indirect`），不再使用已弃用的模式。
-- 内存/核心数按物理内存自动推导（2–4 GB / 2–4 核），数据分区从 16 GB 降到 4 GB；端口动态挑空闲的，中文路径自动转短路径，AVD 锁文件自动清理。
-- 失败原因会翻译成中文并附上修复建议；设置里可「导出诊断报告」。
-- 大文件下载默认 **8 线程分块 + 断点续传**，不支持 Range 的源自动回退单流。
-- **只用自带运行时，与其它模拟器无关**：ApkStart 不探测、不接管、也不驱动你机器上装的 MuMu / 雷电 / 蓝叠 / WSA；
-  装没装它们、它们怎么升级、端口怎么变，都不影响 ApkStart。设置里也不再提供「切换引擎」的选项。
-- **本机体检 · 自动配置**：装完先查一遍 CPU 虚拟化（VT-x/SVM）、Windows 虚拟机监控程序平台、
-  显卡与显存、内存和系统版本；能自动改的（内存 / 核心 / 画质 / 渲染后端）直接写进设置并固化成驱动，
-  需要管理员权限的给按钮，只能在 BIOS 里改的告诉你怎么改。见 [docs/preflight.md](docs/preflight.md)。
-- **驱动（兼容补丁）扩展**：如果某台机器必须改启动参数才跑得起来（老显卡 GLES 版本低、没开硬件加速、
-  某版驱动一开硬件渲染就崩），可以写一份 JSON 补丁：声明匹配哪些机器、命中后改哪些参数。
-  设置页里能导入、启用、导出本机模板；补丁只改白名单里的启动项，不执行任何代码。见 [docs/drivers.md](docs/drivers.md)。
-
-**容器式低成本运行**
-
-- **只读基础层**：`system-images/` 全机一份，所有应用共享，不再同时存 AOSP + 兼容两套镜像。
-- **薄可写层**：单个 AVD 用差量用户数据 + 命名 quickboot 快照；关闭最后一个应用窗口后（空闲时）把内存状态存成快照，下次开机走恢复而不是冷启动。
-- **空闲预热（默认开启）**：像 WSA / 应用宝电脑版一样，ApkStart 一启动就在后台把安卓环境引导好（窗口全程隐藏），点应用时只剩一次 `am start`；代价是空闲常驻约 1 GB 内存，设置里可关闭。
-- **冷启动提速**：加速与引擎版本探测结果落盘缓存（按 exe 指纹失效）、跳过无谓的 `wmic` 进程枚举、开机探测改为自适应间隔（350ms 起）、guest 侧准备命令合并成一次 adb 往返；一次启动少等 5–10 秒。
-- **`/data` 由 ApkStart 自己造**：官方系统镜像里的 `userdata.img` 只是 1 MB 全零占位，真正的格式化原本由 SDK 工具完成 —— 直接拉 `emulator.exe` 会跳过这一步，于是 `/data` 挂不上、guest 掉进 recovery 重启循环，表现就是「等好几分钟还是打不开」。现在首次启动会自己生成一份 4 KB block、带 `ENCRYPT`（文件级加密）与 `ext_attr`（SELinux 标签）的 ext4，并用自带的 `qemu-img` + `resize2fs` 撑到配置的容量。实测冷启动 ~23 秒、命中快照 ~10 秒。
-- 快照完整性校验：保存被打断留下的空壳（只有几十字节的 `snapshot.pb`）会被识别并清理；新版 emulator 写的是 `ram.bin`（老版本是 `ram.img`），两种命名都认，不会再把刚存好的 3 GB 快照误判成空壳删掉。
-- **命令窗口彻底不出现**：qemu 的控制台窗口属于 `conhost.exe`，pid 和 qemu 对不上，靠 pid 白名单一个都藏不住；模拟器的网络守护进程 `netsimd` 还会自己再弹一个黑窗。现在改为「启动模拟器**之前**就打开常驻压制 + 按窗口类名/标题兜底（emulator / qemu / netsim）+ 开机 90 秒内 120ms 扫一次」。
-- **打开软件只看到软件界面**：模拟器主窗（`Android Emulator - apkstart5554`）永远不会单独出现在桌面上 —— 它要么被压制隐藏，要么已经被 `SetParent` 嵌进应用窗口。关掉应用窗口时会**先**把它从宿主窗口上摘下来并藏好，**再**销毁宿主（顺序反了 Windows 会把它重新挂到桌面并显示）；应用退出后窗口代理还会继续「守」最多 3 分钟，避免开机途中退出的那台模拟器在几十秒后把黑窗亮出来。
-- **按需下载**：遇到仅含 ARM 原生库的应用才会补齐通用镜像；`.apks` / `.xapk` 拆分包自动用 `install-multiple` 安装。
-- **可回收**：构建时裁掉非 x86_64 的 QEMU 目标（约 400 MB）；设置页可清理旧镜像、旧快照、锁文件和遗留 AVD。
-
-## 目录结构
-
-```
-apkstart/
-├─ src/
-│  ├─ main.js              主进程：窗口/托盘/单实例/命令行分发/IPC
-│  ├─ preload.js           安全桥接
-│  ├─ ui/                  渲染层（原生 HTML/CSS/JS，无框架）
-│  └─ core/
-│     ├─ zip.js            极简 ZIP 读取器（按需解压）
-│     ├─ axml.js           Android 二进制 XML 解析
-│     ├─ arsc.js           resources.arsc 资源表解析（应用名/图标路径还原）
-│     ├─ apk.js            APK 元信息：包名/版本/启动 Activity/图标/ABI
-│     ├─ png.js            零依赖 PNG 编码器 + 程序图标绘制
-│     ├─ shortcut.js       多尺寸 ICO 生成 + .lnk 快捷方式
-│     ├─ assoc.js          .apk 文件关联（HKCU，免管理员）
-│     ├─ adb.js            adb 客户端（安装/启动/同步/截图/…）
-│     ├─ engine.js         运行时管理：探测/模拟器托管/空闲回收
-│     ├─ sharer.js         本机 ↔ 安卓共享目录双向同步
-│     ├─ installer.js      安装流水线编排
-│     └─ store.js          应用清单与设置持久化
-├─ engine/                 运行时组件下载缓存（emulator / system-images / platform-tools）
-├─ tools/platform-tools/   便携 adb 放置处
-├─ test/                   单元测试 + Electron 集成测试 + 冒烟截图
-├─ build/pack.js           便携版打包
-└─ scripts/assoc.js        .apk 关联命令行开关
+```bash
+apkstart --install ~/Downloads/app.apk
 ```
 
-## 命令行
+ApkStart parses the package offline, checks the data partition and free disk
+space, installs it, writes a `.desktop` launcher to the desktop and to
+`~/.local/share/applications`, then records its metadata. Click the launcher to
+open the application in its own emulator window.
 
-```
-ApkStart.exe                      打开主界面
-ApkStart.exe <路径\to.apk>        安装 APK
-ApkStart.exe --launch <包名>      直接启动应用（桌面快捷方式使用此参数）
-```
+## Daily use
 
-## 测试
+The application grid shows each installed app with its icon extracted from the
+APK. Click a card to launch; right-click for desktop shortcut, pin, reveal APK,
+clear data, uninstall and per-app orientation. The top field filters by label or
+package, and **Install APK** opens a file picker that also accepts drag and drop.
 
-```powershell
-npm test                                   # 纯 Node 单元测试 + 引擎链路测试（不需要网络）
-npm run test:boot                          # 真实引导测试：用 61MB Alpine guest 验证 QEMU 参数/建盘/优雅关机
-npm run selftest                           # 运行时自检：装好 Android 后一键验证 安装→启动→截图→共享目录
-electron test/electron-integration.js      # ICO / 快捷方式集成测试
-electron . --smoke test\shot.png           # 启动应用并截图（界面冒烟）
-```
-
-`npm run selftest` 是装好系统后的「验收命令」——它会对当前设备依次检查 adb 连接、
-Android 版本、freeform 支持、共享目录双向同步，加 `--apk 某应用.apk` 还会完整走一遍
-安装 → 独立窗口启动 → 前台确认 → 截图。
-
-## 设计取舍（诚实说明）
-
-- **不是从零实现的 hypervisor**：安卓内核、GPU 转译、ART 运行时是数年级别的工程，本项目选择站在 AOSP/QEMU/adb 的肩膀上，把工程量集中在「原生应用级体验」上——这正是应用宝电脑版、Google Play Games PC 版等产品共同的架构思路。
-- **共享目录是同步而非挂载**：Windows 无 root 时无法在安卓侧挂载 NTFS 目录，采用秒级双向同步达到同等体验。
-- **ARM-only 应用 / 字节系应用**：设置里开启「ARM 兼容模式」即可切换到 **Android 14（API 34）Google Play 镜像**（内置新版 ndk_translation 翻译层），仅含 ARM 原生库的应用可以安装运行。**实测红果免费短剧（com.phoenix.read，arm64-v8a-only）可正常安装、进入推荐流并播放视频**——旧版 API 30 镜像上会因字节系自带非标准 signal handler 触发翻译层保护性断言（`DoBadTrampoline` SIGABRT），Android 14 镜像的新版翻译层已修复。个别应用自带更深的反模拟检测（如强制校验真实传感器/基带），仍可能受限；安装失败或启动崩溃时 ApkStart 会给出中文说明。
-
-| 兼容模式下运行红果免费短剧（Android 14 · AEHD 硬件加速） |
-|:---:|
-| ![红果短剧在 ApkStart 兼容模式运行](docs/images/compat-hongguo-playing.png) |
-
-### 提示「未启用硬件加速」怎么办
-
-安卓模拟器在 Windows 上只有两条加速路：
-
-| 方式 | 是什么 | 谁需要管理员 | 装完要重启吗 |
-|---|---|---|---|
-| **WHPX** | Windows 自带功能「Windows 虚拟机监控程序平台」 | 开这个功能时 | 要 |
-| **AEHD** | Google 自家内核驱动 | 装驱动时 | 不用 |
-
-- **安装版 / 便携版**：设置 → 环境自检 → 「未启用硬件加速」右侧点**修复**，会弹一次 UAC，自动开 WHPX；如果开不起来（系统不支持 / 你点了否），会自动改装 AEHD 驱动。
-- **微软商店（MSIX）版**：商店应用**不能自行提权**，所以点「修复」会直接帮你打开「启用或关闭 Windows 功能」对话框，勾选
-  **「Windows 虚拟机监控程序平台」**（英文 HypervisorPlatform），确定后**重启电脑**一次即可。
-
-  也可以自己用管理员 PowerShell 跑：
-
-  ```powershell
-  dism /online /enable-feature /featurename:HypervisorPlatform /all /norestart
-  dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-  ```
-
-> 注意别只开「虚拟机平台（VirtualMachinePlatform）」——那是 WSL2 要用的，模拟器要的是
-> **「虚拟机监控程序平台（HypervisorPlatform）」**。只开前者，`emulator -accel-check` 依然会说不可用。
->
-> 没加速也能跑（纯软件模拟），只是开机会慢到几分钟——这也是应用里那条提示的目的，
-> 不是启动失败。
-
-### 桌面图标不对 / 显示成 ApkStart 的图标怎么办
-
-每个安卓应用的桌面快捷方式都应该用它**自己的图标**（安装时从 APK 里解出来存到
-`%APPDATA%\apkstart\icons\<包名>.ico`）。如果显示成了 ApkStart 的绿色播放键，或者干脆是空白图标：
-
-1. **设置 → 系统集成 → 重建快捷方式**（会把桌面和开始菜单的快捷方式按当前应用清单重写一遍，
-   连同图标和任务栏身份一起修好）；
-2. 还不行就删掉那个快捷方式，在 ApkStart 里右键应用 → 重新创建快捷方式/重装一次。
-
-> 为什么会坏：早期版本整理图标时把这些 `.lnk` 图标的 `IconLocation` 统一指向了 ApkStart 的品牌图；
-> 另外把便携版整个目录挪到别处后，`.lnk` 里记的绝对路径也会失效。重建一次即可。
->
-> 顺带说一句：每个应用的快捷方式都带自己的 AppUserModelID，
-> 所以**固定到任务栏**后，任务栏按钮和固定项用的是同一个应用图标，不会混成 ApkStart。
-
-### 为什么我的 `adb devices` 看不到这台安卓设备
-
-ApkStart 的 adb 服务跑在**专用端口 5044**，和系统里你自己的 adb（5037）完全隔开 —— 这样你的 Android Studio / scrcpy 不会跟它抢设备，它也不会误杀你手动开的模拟器。
-
-要用命令行连它：
-
-```powershell
-$env:ANDROID_ADB_SERVER_PORT = 5044
-adb devices              # 会看到 emulator-5554
+```bash
+apkstart --install ~/Downloads/app.apk     # install one or more packages
+apkstart com.example.app                   # launch by package or label
+apkstart --launch com.example.app          # explicit launch form
+apkstart --game com.example.app            # launch with key-to-touch enabled
+apkstart --stop com.example.app            # force-stop the application
+apkstart --controls on <package>           # enable controls for one package
+apkstart --controls off                    # release capture immediately
+apkstart --controls status                 # show mapping state as JSON
+apkstart --controls edit                   # open the layout editor
+apkstart --start-runtime                   # boot the guest and report readiness
+apkstart --stop-runtime                    # shut the runtime down
+apkstart --list                            # list installed applications
+apkstart --gui                             # open the graphical window
 ```
 
-⚠️ **不要**对着 `5555` 端口手动 `adb connect`：Play 版系统镜像会弹「允许 USB 调试吗」的系统对话框，而且它会盖在正在运行的安卓应用上，看起来像是程序出了问题。
+The full flag reference, including `init --backend` and environment variables,
+is in [CLI.md](docs/CLI.md).
 
-## 关于作者
+The installer handles split bundles with `install-multiple` and ARM-only
+packages through the translation layer in the Android 14 Google Play image. If
+that capability is missing, ApkStart switches the image and retries instead of
+reporting a generic failure. Launches are serialized: repeated clicks queue
+rather than starting two runtime sessions. Permissions are granted, orientation
+is locked to the value learned from the manifest or the running activity, and
+the splash stays until the first frame is drawn.
 
-ApkStart 由 **RoutineMiku** 开发维护。
+Closing the last window returns the runtime to idle. After five minutes by
+default it shuts down while keeping the quickboot snapshot. Prewarming keeps the
+guest ready while applications are in use, so subsequent launches are usually a
+few seconds.
 
-- GitHub：<https://github.com/RoutineMiku/apkstart>
-- 微信公众号：扫码关注
+## Windows and input
 
-<p align="center"><img src="docs/images/brand.png" alt="关于面板：公众号二维码与项目链接" width="560" /></p>
+Linux uses the emulator's own top-level window. `SetParent` embedding is a
+Windows-only feature and is skipped. The panel shape is 1280×720 landscape by
+default on Linux, which suits a desktop window better than a portrait phone
+panel. Per-app orientation overrides are remembered.
 
-<p align="center"><i>Powered by <b>RoutineMiku</b></i></p>
+Input is native: host keyboard and mouse go to the emulator window. Settings →
+Input & Controls can map the right mouse button to Android BACK, coalesce wheel
+bursts into a single swipe, and map side buttons to BACK/FORWARD. On Linux these
+mappings are driven by the persistent adb input channel, not by a global Windows
+hook.
 
-## 参与贡献
+Touch-only games use the `key2touch` daemon through the Waydroid backend. It is
+disabled by default because the universal layout is not verified for every game
+and an active mapper captures keys across the desktop. Use `apkstart --game
+<app>` to opt in for one game; a detached watcher releases capture when the game
+exits. Press F2 in a game to edit the layout, or use `apkstart --controls edit`.
+An on-screen keyboard can be enabled in settings when a touch keyboard is
+preferred; the default is off so the host keyboard is used.
 
-欢迎 Issue / PR。壳层保持零第三方依赖，提交前请跑 `npm test`；细节见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+## Networking and DNS
 
-## 许可证
+The guest uses QEMU user-mode NAT. Outbound traffic reuses the host network
+stack; no virtual adapter, bridge or driver is created. ApkStart's adb server
+runs on an isolated port so external adb clients do not contend for the device.
 
-[MIT](LICENSE)。发行包只含 ApkStart 自身代码与 Electron 运行时，不分发安卓系统镜像、QEMU 二进制或 Google 组件；这些由用户本机首次启动时从官方源按需下载，遵循各自的许可协议。
+Settings → Performance and Resources → **DNS server** chooses what the emulator
+passes to the guest through `-dns-server`:
 
-<!-- apkstart-linux-origin -->
-> Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.
+| Preset | Servers | When to use |
+|---|---|---|
+| Domestic (default) | `223.5.5.5,119.29.29.29` | Fast resolution on domestic networks and when a VPN or corporate resolver is slow |
+| Cloudflare | `1.1.1.1,1.0.0.1` | Networks where domestic resolvers are filtered |
+| Google | `8.8.8.8,8.8.4.4` | Networks with unrestricted access to Google DNS |
+| Off | none | Intranet names that only the host resolver knows; the guest keeps using 10.0.2.3 |
+
+The setting takes effect on the next runtime start. Configurations from before
+0.6.4 store only `engine.fastDns` and are interpreted as domestic or off without
+a migration step. An unknown value falls back to the domestic preset.
+
+## Files and data
+
+`~/ApkStartShared` is synchronised bidirectionally with
+`/sdcard/ApkStartShared`. Synchronisation is incremental, based on mtime and
+size, and runs while an application window is active. Conflicting files are
+kept as copies rather than silently overwritten. Both directories can be
+changed in Settings → Integration & Files, which also shows disk usage and
+offers cleanup of old images, stale snapshots, locks and leftover directories.
+
+The runtime directory, AVD data and shared directory are independent of the
+application installation, so an update or reinstall does not remove installed
+apps. To remove ApkStart completely:
+
+```bash
+node scripts/assoc.js off          # restore the previous .apk handler
+npm uninstall -g apkstart
+rm -rf ~/.local/share/apkstart ~/.local/share/applications/apkstart-apk.desktop
+```
+
+The last command deletes installed applications, snapshots and shared state.
+
+## Diagnostics and repair
+
+Settings → Diagnostics & Repair contains hardware preflight, JSON driver
+patches and the periodic auto-check. The auto-check runs every ten minutes by
+default and groups findings by runtime, device, storage, settings, network and
+logs. Probe failures are reported as "unknown" rather than as problems, and only
+new problems raise a notification. Most findings have a one-click repair action;
+where no action is implemented, the UI says so.
+
+```bash
+npm run test:boot    # real QEMU boot test with an Alpine guest
+npm run selftest     # install → launch → screenshot → shared folder
+```
+
+## Updates
+
+Settings → Update & About checks GitHub Releases for this fork. AppImage
+installations are replaced in place with a POSIX script that waits for the
+application to exit, verifies the replacement and rolls back on failure.
+Package-manager installs open the download page instead. Update payloads are
+verified before adoption, and an interrupted update resumes on the next launch.
+
+## Recommended settings
+
+| Goal | Setting |
+|---|---|
+| Lowest memory use | Resource strategy `save`, prewarming off, snapshot off if disk is tight |
+| Fast app opening | Keep prewarming and snapshot on; the guest stays resident while apps are in use |
+| Games | Resource strategy `smooth`, explicit memory value above the automatic 2 GB ceiling, host GPU rendering |
+| Corporate or VPN network | DNS preset `off` for intranet names, or `Cloudflare` if the corporate resolver is slow |
+| No autostart | Disable "Start with the system" in Settings → Common & Install; it is enabled by default |
+| Waydroid | Select the backend with `apkstart --backend waydroid` after `apkstart init --backend waydroid` |
+
+## Releasing
+
+Releases are produced by `.github/workflows/release.yml`. `package.json` is the
+single source of the version number, and a tag must be `v` followed by that
+exact version, for example `v0.6.4` for version `0.6.4`. Notes may be placed in
+`.github/release-notes-<tag>.md`; when present they are used verbatim.
+
+The pipeline has three jobs:
+
+1. **verify** runs on Ubuntu with Node 22: `npm ci`, the full `npm test` chain,
+   shell and Python syntax checks, the UI screenshot fixture build, and four
+   CLI smoke commands.
+2. **build-linux** depends on verify. It builds an AppImage with
+   `npm run pack:linux` and a Debian package with electron-builder, writes
+   `SHA256SUMS` with bare file names in `dist/release`, checks that the tag
+   matches `package.json`, and uploads the three files as one artifact.
+3. **publish** downloads the artifact, re-verifies every checksum with
+   `sha256sum -c`, creates the release if it does not exist, and uploads the
+   AppImage, `.deb` and checksum file with `gh release upload --clobber`.
+
+Only the default `GITHUB_TOKEN` is required; no Gitee token, signing key or
+telemetry endpoint is part of the pipeline. The publish job runs only for a
+`v*` tag push or when `workflow_dispatch` is given an existing tag. Re-running a
+tag updates assets in place rather than creating a second release.
+
+For a manual build:
+
+```bash
+npm test
+npm run pack:linux
+npx electron-builder --linux deb --publish never --config electron-builder.yml
+git tag v0.6.4
+git push origin v0.6.4
+```
+
+Automated gates prove that the source passes unit tests, the UI fixture renders
+without script errors, the CLI starts without Electron, and built assets match
+their checksums. They do not prove installation on every distribution, a real
+KVM boot, or application compatibility. Record those checks separately in the
+release notes when they were performed.
+
+| Asset | Built by | Notes |
+|---|---|---|
+| `ApkStart-<version>-x86_64.AppImage` | `npm run pack:linux` | Runtime downloaded on first use |
+| `ApkStart-<version>-amd64.deb` | `electron-builder --linux deb` | Updates open the download page |
+| `SHA256SUMS` | `sha256sum` in `dist/release` | Bare names, verified before upload |
+
+## Development and tests
+
+```bash
+npm test                # pure-Node regression suite, 26 scripts
+npm run test:ui         # real Electron settings smoke (requires Electron)
+npm run test:boot       # real QEMU boot test with an Alpine guest
+npm run selftest        # install → launch → screenshot → shared folder
+npm run pack:linux      # build the AppImage
+npm run docs:fixture    # build the screenshot fixture
+```
+
+The default `npm test` chain runs 26 Node scripts, including the DNS preset
+suite. The shell has no runtime dependency except `@napi-rs/lzma`. All ZIP,
+AXML, ARSC, PNG, ICO, ext4 and download logic is hand-written on Node built-ins.
+
+## Design boundaries
+
+ApkStart is not a hypervisor. Android's kernel, ART runtime and GPU translation
+come from AOSP, QEMU, adb and Google's system image; this project owns the
+installation, window presentation, runtime management, sharing and update
+experience.
+
+- Linux ARM64 is not supported because no official emulator archive exists for
+  that host.
+- Window embedding is Windows-only; Linux uses a separate emulator window.
+- Waydroid's multi-window mode shares one Android display and ignores window
+  close; stop the app from the application list instead.
+- Game controls require a verified per-game layout; the universal layout is not
+  guaranteed to work.
+- Application compatibility still depends on ABI, Google Play dependencies,
+  hardware features and anti-emulation checks.
+- Runtime downloads follow their upstream licences; the project code is MIT
+  licensed.
+
+For Windows-derived background material, see
+[USER-MANUAL.md](docs/USER-MANUAL.md), [LINUX.md](docs/LINUX.md),
+[SPECIFICATIONS.md](docs/SPECIFICATIONS.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Credits and licence
+
+Original project by [RoutineMiku](https://github.com/RoutineMiku/apkstart).
+Linux fork maintained at
+[meshackbahati/apkstart-linux](https://github.com/meshackbahati/apkstart-linux).
+
+[MIT](LICENSE). Release packages contain ApkStart's own code and the Electron
+runtime; Android images, QEMU binaries and Google components are downloaded by
+the user on first use under their respective licences.

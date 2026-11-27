@@ -78,6 +78,16 @@ Explorer 双击 .apk
 - QEMU 空闲看门狗：无前台应用且超过设定分钟数才回收，有应用在跑永不回收。
 - 设置/应用清单写入采用 tmp+rename 原子写。
 
+## 网络与 DNS
+
+模拟器只使用 QEMU 用户态 NAT，安卓侧经 10.0.2.3 访问主机解析器和物理网卡，
+宿主不会新增虚拟网卡。`src/core/emulator.js` 导出的 `dnsServersFor(settings)`
+把设置里的 `engine.dnsPreset` 翻译成 `-dns-server` 参数：国内公共 DNS（默认）、
+Cloudflare、Google 或关闭。缺少 `dnsPreset` 的旧配置按布尔 `fastDns` 推导，
+未知值回落到国内预设，因此升级不需要迁移脚本。`src/ui/index.html` 中的下拉框
+与 `src/ui/app.js` 的绑定负责读写这个设置。UI 截图的生成方式见
+仓库根目录 README.md 的「界面」一节。
+
 ## 应用级容器模型（性能）
 
 ### 与「真容器」的边界

@@ -1,6 +1,6 @@
 # Specifications and limitations
 
-This document describes the current Linux build (version 0.6.3) and its measured limits.
+This document describes the current Linux build (version 0.6.4) and its measured limits.
 
 ## Host requirements
 
@@ -29,13 +29,23 @@ The default remains `builtin`; select another backend with `apkstart --backend <
 1. Waydroid 1.6.3 multi-window mode shares one Android display. Resizing a top-level window resizes that display rather than the application, and the window close button is ignored. This is upstream behaviour (waydroid/waydroid#2470); the proposed hardware composer fix does not change multi-window mode. Force-stopping the application from ApkStart does close its window.
 2. The Waydroid container freezes when idle, which pauses adb. The backend unfreezes it automatically through a narrow passwordless sudo rule.
 3. ATL needs a source build and its framework implementations are incomplete. Games with OpenGL or Binder dependencies may not run.
-4. The English UI uses exact translations plus a glossary fallback. A small number of composite strings may read imperfectly.
+4. The English UI uses exact translations plus a glossary fallback. Since 0.6.4 a glossary substitution is accepted only when every Chinese character is covered, so strings are either fully translated or left in their source language; some long descriptions therefore remain Chinese.
 5. key2touch is restricted to focused Waydroid windows through `only-focused` and a `waydroid.*` rule. Use `apkstart --controls off` immediately if keyboard input is captured outside a game.
 6. Guest state under the QEMU backend depends on the quickboot snapshot and is not covered by the same persistence guarantees as Waydroid's `/data`.
 
 ## Game controls
 
 The universal profile binds a WASD joystick, a mouse-look area, both mouse buttons, Space, Enter, Q, E, R, Shift, Ctrl and number keys 1–3. On-screen buttons stay hidden because the physical keyboard is the intended input path. It is **disabled by default** because keyboard-to-touch mappings were not reliable in Moto Rush, which has been removed from this installation. `apkstart --game <app>` is the explicit opt-in launcher; `apkstart --controls edit` opens the layout editor as a desktop application; `apkstart --controls off` releases capture at any moment. Layouts are edited with F2 inside a game or through the desktop editor. Game controls remain experimental until a game-specific layout has been verified.
+
+## Networking
+
+The guest uses QEMU user-mode NAT; no virtual adapter is created. DNS is
+configurable in Settings → Performance and resources since 0.6.4: `cn`
+(`223.5.5.5,119.29.29.29`, default), `cloudflare` (`1.1.1.1,1.0.0.1`),
+`google` (`8.8.8.8,8.8.4.4`) or `off`. The value is passed as `-dns-server`
+on the next runtime start. An unknown value falls back to the domestic preset,
+and configurations that only contain the legacy boolean `fastDns` are read as
+`cn` or `off`.
 
 ## Setup and verification
 

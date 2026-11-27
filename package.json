@@ -1,22 +1,25 @@
 {
   "name": "apkstart",
   "productName": "ApkStart",
-  "version": "0.6.3",
-  "description": "Run Android APKs as desktop windows on Linux with KVM acceleration and low memory use",
+  "version": "0.6.4",
+  "description": "Run Android APKs as desktop windows on Linux with KVM acceleration, Waydroid/ATL backends and low memory use",
   "main": "src/main.js",
   "bin": {
     "apkstart": "bin/apkstart.js"
   },
-  "author": "RoutineMiku",
+  "author": "meshackbahati",
+  "contributors": [
+    "RoutineMiku (original author, https://github.com/RoutineMiku/apkstart)"
+  ],
   "license": "MIT",
   "private": true,
-  "homepage": "https://github.com/RoutineMiku/apkstart#readme",
+  "homepage": "https://github.com/meshackbahati/apkstart-linux#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RoutineMiku/apkstart.git"
+    "url": "git+https://github.com/meshackbahati/apkstart-linux.git"
   },
   "bugs": {
-    "url": "https://github.com/RoutineMiku/apkstart/issues"
+    "url": "https://github.com/meshackbahati/apkstart-linux/issues"
   },
   "keywords": [
     "android",
@@ -40,9 +43,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node test/run-tests.js && node test/android-test.js && node test/android-softkeyboard-test.js && node test/locale-test.js && node test/atl-test.js && node test/setup-test.js && node test/range-validation-test.js && node test/display-scale-test.js && node test/resources-test.js && node test/linux-memory-test.js && node test/linux-runtime-test.js && node test/linux-usage-test.js && node test/linux-update-test.js && node test/waydroid-test.js && node test/drivers-test.js && node test/preflight-test.js && node test/standalone-test.js && node test/boot-auth-test.js && node test/issue-hardening-test.js && node test/autodebug-test.js && node test/settings-categories-test.js && node test/engine-test.js && node test/manual-test.js && node test/incremental-test.js && node test/auto-test.js",
+    "test": "node test/dns-preset-test.js && node test/run-tests.js && node test/android-test.js && node test/android-softkeyboard-test.js && node test/locale-test.js && node test/atl-test.js && node test/setup-test.js && node test/range-validation-test.js && node test/display-scale-test.js && node test/resources-test.js && node test/linux-memory-test.js && node test/linux-runtime-test.js && node test/linux-usage-test.js && node test/linux-update-test.js && node test/waydroid-test.js && node test/drivers-test.js && node test/preflight-test.js && node test/standalone-test.js && node test/boot-auth-test.js && node test/issue-hardening-test.js && node test/autodebug-test.js && node test/settings-categories-test.js && node test/engine-test.js && node test/manual-test.js && node test/incremental-test.js && node test/auto-test.js",
     "test:ui": "electron test/settings-ui-test.js",
     "build:manual": "python docs/build-manual-html.py",
+    "docs:fixture": "node tools/ui-screenshot-fixture.js",
     "pack": "node build/pack.js",
     "runtime": "node build/prepare-runtime.js",
     "build:exe": "node build/prepare-runtime.js && electron-builder --win nsis --config electron-builder.yml",

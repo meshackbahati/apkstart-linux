@@ -48,6 +48,7 @@ tbody tr:nth-child(even){background:#fbfcfd}
 <aside><h2>目录</h2>
 <input id="tocSearch" type="search" placeholder="筛选目录（Ctrl+F 全文搜索）" autocomplete="off" />
 <div id="tocList"><a class="toc-l2" href="#目录">目录</a>
+<a class="toc-l2" href="#0-english-interface-and-command-line">0. English interface and command line</a>
 <a class="toc-l2" href="#1-30-秒看懂-apkstart">1. 30 秒看懂 ApkStart</a>
 <a class="toc-l2" href="#2-安装与首次启动">2. 安装与首次启动</a>
 <a class="toc-l3" href="#2-1-选择适合你的版本">2.1 选择适合你的版本</a>
@@ -84,13 +85,17 @@ tbody tr:nth-child(even){background:#fbfcfd}
 </aside>
 <main>
 <h1 id="apkstart-产品使用手册与问题解决方案">ApkStart 产品使用手册与问题解决方案</h1>
-<blockquote>版本：v0.6.3 · 平台：Windows 10/11 x64 · 更新：2026-11-19  ApkStart 是一个 Windows 上的安卓应用运行器：<strong>让安卓应用像 Windows 原生软件一样安装、出现在桌面、双击即用。</strong> 本手册先教你怎么用，再按「症状」给出可照做的解决方案。所有步骤都对应软件里真实存在的按钮和菜单。</blockquote>
+<blockquote>版本：v0.6.4 · 上游手册对应：Windows 10/11 x64 · 更新：2026-11-27  <strong>Linux 用户请先阅读仓库根目录的 README.md，以及 docs 目录下的 LINUX.md。</strong> 本手册保留自上游项目，其中 Windows 快捷方式、注册表、WHPX/AEHD 与 PowerShell 相关章节不适用于本分支； Linux 使用 <code>.desktop</code> 启动器、<code>/dev/kvm</code>、Waydroid/ATL 后端与 POSIX 更新脚本。  ApkStart 是一个安卓应用运行器：<strong>让安卓应用像桌面原生软件一样安装、出现在桌面、双击即用。</strong> 本手册先教你怎么用，再按「症状」给出可照做的解决方案。所有步骤都对应软件里真实存在的按钮和菜单。</blockquote>
 <hr/>
 <h2 id="目录">目录</h2>
 <ol><li><a href="#1-30-秒看懂-apkstart">30 秒看懂 ApkStart</a></li><li><a href="#2-安装与首次启动">安装与首次启动</a></li><li><a href="#3-日常使用">日常使用</a></li><li><a href="#4-理解三个核心概念看懂报错的关键">理解三个核心概念（看懂报错的关键）</a></li><li><a href="#5-遇到问题先做这一步体检与自动检测">遇到问题先做这一步：体检与自动检测</a></li><li><a href="#6-常见问题解决方案">常见问题解决方案</a></li></ol>
 <ul><li><a href="#61-提示未启用硬件加速--开机很慢">6.1 提示「未启用硬件加速」 / 开机很慢</a></li><li><a href="#62-安装失败install_failed_">6.2 安装失败（INSTALL_FAILED_*）</a></li><li><a href="#63-系统镜像没有-arm-转译层--arm-应用装不上或闪退">6.3 系统镜像没有 ARM 转译层 / ARM 应用装不上或闪退</a></li><li><a href="#64-adb-未授权允许-usb-调试">6.4 adb 未授权（允许 USB 调试）</a></li><li><a href="#65-双击图标没反应--一直转圈--出现带旋转按钮的窗口">6.5 双击图标没反应 / 一直转圈 / 出现带旋转按钮的窗口</a></li><li><a href="#66-其它启动类问题速查表">6.6 其它启动类问题速查表</a></li><li><a href="#67-应用没有声音--声音很小">6.7 应用没有声音 / 声音很小</a></li><li><a href="#68-商店版启动失败--0xc0000135dll-加载失败">6.8 商店版启动失败 / 0xC0000135（DLL 加载失败）</a></li></ul>
 <ol><li><a href="#7-命令行参考">命令行参考</a></li><li><a href="#8-数据与目录说明">数据与目录说明</a></li><li><a href="#9-获取帮助与反馈">获取帮助与反馈</a></li></ol>
 <hr/>
+<h2 id="0-english-interface-and-command-line">0. English interface and command line</h2>
+<p>The interface is translated to English by <code>src/ui/i18n.js</code>. Exact translations cover common phrases and a glossary translates the remaining composite strings term by term.</p>
+<p>ApkStart can be installed as a global command (<code>npm install -g .</code> or <code>bash scripts/install.sh</code>). The essential commands are <code>apkstart --install &lt;file.apk&gt;</code>, <code>apkstart &lt;app-name&gt;</code>, <code>apkstart --list</code>, <code>apkstart --stop &lt;app&gt;</code> and <code>apkstart init --check</code>. See <a href="CLI.md">CLI.md</a> for the full reference.</p>
+<p>For touch-only games, the keyboard-to-touch mapper is enabled only while the game runs and is released when it stops. Use <code>apkstart --controls off</code> at any time to free the keyboard, and press F2 inside a game to edit the control layout.</p>
 <h2 id="1-30-秒看懂-apkstart">1. 30 秒看懂 ApkStart</h2>
 <pre><code>桌面图标（真实应用图标 .lnk）
       │ 双击
@@ -256,6 +261,8 @@ ApkStart.exe --launch &lt;包名&gt;          直接启动应用（桌面快捷�
 <ul><li>GitHub：&lt;https://github.com/RoutineMiku/apkstart&gt;（Issues / Releases）</li><li>Gitee：&lt;https://gitee.com/daily-miku/apkstart&gt;</li></ul>
 <hr/>
 <p>*本手册对应 v0.6.3，随版本更新。若界面文案与此处略有出入，以软件内实际显示为准。*</p>
+<p>&lt;!-- apkstart-linux-origin --&gt;</p>
+<blockquote>Project origin: this is the Linux-focused build of ApkStart, which was originally created by RoutineMiku. The Linux runtime, command line,Waydroid/ATL backends and game controls are developed in this repository.</blockquote>
 </main>
 </div>
 <div class="btnbar"><button onclick="window.print()">打印 / 存为 PDF</button></div>

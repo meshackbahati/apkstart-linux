@@ -6,12 +6,15 @@ ApkStart is available as a global `apkstart` command after `npm install -g .` or
 
 | Command | Purpose |
 | --- | --- |
+| `apkstart` / `--help` / `-h` | Print the built-in help |
 | `apkstart --install <apk...>` | Parse, install and create desktop launchers for one or more APK files |
-| `apkstart --version` | Print the version |
+| `apkstart --version` / `-V` | Print the version |
 | `apkstart --list` | List installed applications by package, label and version |
 | `apkstart --game <app>` | Launch a game with the universal controller enabled |
 | `apkstart <app>` / `apkstart --launch <app>` | Launch by package name or by label |
 | `apkstart --stop <app>` | Force-stop an application and release game controls |
+| `apkstart --controls on [pkg]` / `off [pkg]` | Enable or release controller mapping globally or for one package |
+| `apkstart --controls status` | Print the current mapping state as JSON |
 | `apkstart --controls edit` | Open the controller layout editor as a desktop application |
 | `apkstart --backend <id>` | Select `builtin`, `waydroid` or `atl` |
 | `apkstart init [--backend <id>]` | Install and configure the dependencies of that backend |
